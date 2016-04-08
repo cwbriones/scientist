@@ -16,4 +16,13 @@ defmodule ExperimentTest do
     experiment = Experiment.new
     assert_raise(ArgumentError, fn -> Experiment.run(experiment) end)
   end
+
+  test "it only can have a single control" do
+    fun = fn ->
+      Experiment.new
+      |> Experiment.add_control(fn -> :control end)
+      |> Experiment.add_control(fn -> :second_control end)
+    end
+    assert_raise(ArgumentError, fun)
+  end
 end
