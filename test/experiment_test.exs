@@ -25,4 +25,22 @@ defmodule ExperimentTest do
     end
     assert_raise(ArgumentError, fun)
   end
+
+  test "it passes through the control" do
+    assert :control ==
+      Experiment.new
+      |> Experiment.add_control(fn -> :control end)
+      |> Experiment.run
+  end
+
+  test "it runs every candidate" do
+    parent = self
+    Experiment.new
+      |> Experiment.add_control(fn -> send(parent, 1) end)
+      |> Experiment.add_observable("one", fn -> send(parent, 2) end)
+      |> Experiment.add_observable("two", fn -> send(parent, 3) end)
+      |> Experiment.run
+    {:messages, messages} = Process.info(self, :messages)
+    assert [1, 2, 3] == Enum.sort(messages)
+  end
 end

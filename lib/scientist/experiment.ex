@@ -17,15 +17,23 @@ defmodule Scientist.Experiment do
 
   # Runs the experiment
   def run(exp = %Scientist.Experiment{observables: %{"control" => control}}) do
-    exp.observables["control"].()
+    {_, control_result} = eval_observable({"control", control})
+    _candidate_results = exp.observables
+    |> Map.delete("control")
+    |> Map.to_list
+    |> Enum.map(&eval_observable/1)
 
-    exp.result
+    control_result
   end
   def run(_), do: raise ArgumentError, message: "Experiment must have a control to run"
 
+  defp eval_observable({name, observable}) do
+    {name, observable.()}
+  end
+
   # Adds the given observable to the experiment as a control
   def add_control(%Scientist.Experiment{observables: %{"control" => _}}, _) do
-    raise ArgumentError
+    raise ArgumentError, message: "Experiment can only have a single control"
   end
   def add_control(exp, observable), do: add_observable(exp, "control", observable)
 
