@@ -1,10 +1,10 @@
 defmodule Scientist.Observation do
-  @timeunit :micro_seconds
+  @timeunit :milli_seconds
 
   defstruct [
       name: "",
       experiment: nil,
-      timestamp: System.system_time(@timeunit),
+      timestamp: nil,
       value: nil,
       exception: nil,
       duration: nil,
@@ -14,6 +14,7 @@ defmodule Scientist.Observation do
     observation = %Scientist.Observation{
       name: name,
       experiment: experiment,
+      timestamp: System.system_time(@timeunit),
     }
     try do
       value = observable.()
