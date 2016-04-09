@@ -85,7 +85,73 @@ defmodule ExperimentTest do
     use Scientist.Experiment
 
     def enabled?, do: true
-    def publish(_), do: :ok
+    def publish(result) do
+      context = result.experiment.context
+      send(context.parent, :published)
+    end
+
+    def raised(experiment, operation, except) do
+      # Send a message with the exception to the parent process
+      parent = experiment.context[:parent]
+      send(parent, {operation, except})
+    end
+
+    def thrown(experiment, operation, except) do
+      parent = experiment.context[:parent]
+      send(parent, {:thrown, operation, except})
+    end
+  end
+
+  test "it reports errors raised during compare" do
+    experiment = Experiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+
+    experiment
+    |> Experiment.set_comparator(fn _, _ -> raise "SCARY ERROR" end)
+    |> RaiseExperiment.run(result: true)
+
+    assert_received {:compare, %RuntimeError{message: "SCARY ERROR"}}
+
+    experiment
+    |> Experiment.set_comparator(fn _, _ -> throw "SCARY ERROR" end)
+    |> RaiseExperiment.run(result: true)
+
+    assert_received {:thrown, :compare, "SCARY ERROR"}
+  end
+
+  test "it reports errors raised during clean" do
+    experiment = RaiseExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+
+    experiment
+    |> Experiment.clean(fn _ -> raise "YOU GOT SPOOKED" end)
+    |> RaiseExperiment.run(result: true)
+
+    assert_received {:clean, %RuntimeError{message: "YOU GOT SPOOKED"}}
+
+    experiment
+    |> Experiment.clean(fn _ -> throw "YOU GOT SPOOKED" end)
+    |> RaiseExperiment.run(result: true)
+
+    assert_received {:thrown, :clean, "YOU GOT SPOOKED"}
+  end
+
+  test "it uses the publish function during run" do
+    RaiseExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> RaiseExperiment.run(result: true)
+
+    assert_received :published
+  end
+
+  defmodule BadPublishExperiment do
+    use Scientist.Experiment
+
+    def enabled?, do: true
+    def publish(_), do: raise "ka-BOOM"
 
     def raised(experiment, operation, except) do
       # Send a message with the exception to the parent process
@@ -94,23 +160,12 @@ defmodule ExperimentTest do
     end
   end
 
-  test "it reports errors raised during compare" do
-    Experiment.new("test", context: %{parent: self})
+  test "it reports errors raised during publish" do
+    BadPublishExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
-    |> Experiment.set_comparator(fn _, _ -> raise "SCARY ERROR" end)
-    |> RaiseExperiment.run(result: true)
+    |> BadPublishExperiment.run(result: true)
 
-    assert_received {:compare, %RuntimeError{message: "SCARY ERROR"}}
-  end
-
-  test "it reports errors raised during clean" do
-    RaiseExperiment.new("test", context: %{parent: self})
-    |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
-    |> Experiment.clean(fn _ -> raise "YOU GOT SPOOKED" end)
-    |> RaiseExperiment.run(result: true)
-
-    assert_received {:clean, %RuntimeError{message: "YOU GOT SPOOKED"}}
+    assert_received {:publish, %RuntimeError{message: "ka-BOOM"}}
   end
 end

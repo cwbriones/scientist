@@ -64,7 +64,13 @@ defmodule Scientist.Experiment do
     mismatched = Enum.reject(candidates, &observations_match?(module, exp, control, &1))
     result = Scientist.Result.new(exp, control, candidates, mismatched)
 
-    module.publish(result)
+    try do
+      module.publish(result)
+    rescue
+      except -> module.raised(exp, :publish, except)
+    catch
+      except -> module.thrown(exp, :publish, except)
+    end
 
     cond do
       Keyword.get(opts, :result, false) -> result

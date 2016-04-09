@@ -25,7 +25,7 @@ defmodule Scientist.Observation do
         rescue
           except -> experiment.module.raised(experiment, :clean, except)
         catch
-          except -> experiment.module.raised(experiment, :clean, except)
+          except -> experiment.module.thrown(experiment, :clean, except)
         end
       else
         value
