@@ -40,7 +40,44 @@ defmodule ExperimentTest do
       |> Experiment.add_observable("one", fn -> send(parent, 2) end)
       |> Experiment.add_observable("two", fn -> send(parent, 3) end)
       |> Experiment.run
-    {:messages, messages} = Process.info(self, :messages)
-    assert [1, 2, 3] == Enum.sort(messages)
+    assert_received 1
+    assert_received 2
+    assert_received 3
+  end
+
+  test "it runs the candidates in arbitrary order" do
+    parent = self
+    experiment = Experiment.new
+      |> Experiment.add_control(fn -> send(parent, 1) end)
+      |> Experiment.add_observable("one", fn -> send(parent, 2) end)
+
+    Stream.repeatedly(fn -> Experiment.run(experiment) end)
+    |> Stream.take(1000)
+    |> Enum.to_list
+    {_, messages} = Process.info(self, :messages)
+
+    unique = Enum.chunk(messages, 2) |> Enum.uniq |> Enum.count
+    assert unique == 2
+  end
+
+  test "it compares results" do
+    matched = Experiment.new
+    |> Experiment.add_control(fn -> 1 end)
+    |> Experiment.add_observable("candidate", fn -> 1 end)
+    |> Experiment.run(result: true)
+    |> Scientist.Result.matched?
+
+    assert matched
+  end
+
+  test "it compares with the comparator provided" do
+    matched = Experiment.new
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> "control" end)
+    |> Experiment.set_comparator(fn(co, ca) -> Atom.to_string(co) == ca end)
+    |> Experiment.run(result: true)
+    |> Scientist.Result.matched?
+
+    assert matched
   end
 end
