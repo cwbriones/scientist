@@ -74,7 +74,7 @@ defmodule ExperimentTest do
     matched = Experiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> "control" end)
-    |> Experiment.set_comparator(fn(co, ca) -> Atom.to_string(co) == ca end)
+    |> Experiment.compare_with(fn(co, ca) -> Atom.to_string(co) == ca end)
     |> Experiment.run(result: true)
     |> Scientist.Result.matched?
 
@@ -108,13 +108,13 @@ defmodule ExperimentTest do
     |> Experiment.add_observable("candidate", fn -> :control end)
 
     experiment
-    |> Experiment.set_comparator(fn _, _ -> raise "SCARY ERROR" end)
+    |> Experiment.compare_with(fn _, _ -> raise "SCARY ERROR" end)
     |> RaiseExperiment.run(result: true)
 
     assert_received {:compare, %RuntimeError{message: "SCARY ERROR"}}
 
     experiment
-    |> Experiment.set_comparator(fn _, _ -> throw "SCARY ERROR" end)
+    |> Experiment.compare_with(fn _, _ -> throw "SCARY ERROR" end)
     |> RaiseExperiment.run(result: true)
 
     assert_received {:thrown, :compare, "SCARY ERROR"}
@@ -126,13 +126,13 @@ defmodule ExperimentTest do
     |> Experiment.add_observable("candidate", fn -> :control end)
 
     experiment
-    |> Experiment.clean(fn _ -> raise "YOU GOT SPOOKED" end)
+    |> Experiment.clean_with(fn _ -> raise "YOU GOT SPOOKED" end)
     |> RaiseExperiment.run(result: true)
 
     assert_received {:clean, %RuntimeError{message: "YOU GOT SPOOKED"}}
 
     experiment
-    |> Experiment.clean(fn _ -> throw "YOU GOT SPOOKED" end)
+    |> Experiment.clean_with(fn _ -> throw "YOU GOT SPOOKED" end)
     |> RaiseExperiment.run(result: true)
 
     assert_received {:thrown, :clean, "YOU GOT SPOOKED"}

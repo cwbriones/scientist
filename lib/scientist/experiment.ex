@@ -110,11 +110,11 @@ defmodule Scientist.Experiment do
     %__MODULE__{exp | observables: new_observables}
   end
 
-  def set_comparator(exp, compare) do
-    %__MODULE__{exp | comparator: compare}
+  def compare_with(exp, c) do
+    %__MODULE__{exp | comparator: c}
   end
 
-  def clean(exp, cleaner) do
+  def clean_with(exp, cleaner) do
     %__MODULE__{exp | clean: cleaner}
   end
 

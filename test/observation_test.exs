@@ -79,7 +79,7 @@ defmodule ObservationTest do
 
   test "it uses the clean function from the experiment when available" do
     observation = Experiment.new("test")
-      |> Experiment.clean(&Atom.to_string/1)
+      |> Experiment.clean_with(&Atom.to_string/1)
       |> Observation.new("control", fn -> :control end)
 
     assert observation.value == :control
