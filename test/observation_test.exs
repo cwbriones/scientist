@@ -69,4 +69,20 @@ defmodule ObservationTest do
 
     refute Observation.equivalent?(control, candidate)
   end
+
+  test "the cleaned value is the same as the value by default" do
+    observation = Experiment.new("test")
+      |> Observation.new("control", fn -> :control end)
+
+    assert observation.value == observation.cleaned_value
+  end
+
+  test "it uses the clean function from the experiment when available" do
+    observation = Experiment.new("test")
+      |> Experiment.clean(&Atom.to_string/1)
+      |> Observation.new("control", fn -> :control end)
+
+    assert observation.value == :control
+    assert observation.cleaned_value == "control"
+  end
 end

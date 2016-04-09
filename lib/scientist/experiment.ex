@@ -5,6 +5,7 @@ defmodule Scientist.Experiment do
       context: %{},
       run_if_fn: nil,
       result: nil,
+      clean: nil,
       comparator: &(&1 == &2)
     ]
 
@@ -58,6 +59,10 @@ defmodule Scientist.Experiment do
 
   def set_comparator(exp, compare) do
     %__MODULE__{exp | comparator: compare}
+  end
+
+  def clean(exp, cleaner) do
+    %__MODULE__{exp | clean: cleaner}
   end
 
   def set_run_if(exp, run_if_fn) do

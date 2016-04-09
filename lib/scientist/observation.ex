@@ -6,6 +6,7 @@ defmodule Scientist.Observation do
       experiment: nil,
       timestamp: nil,
       value: nil,
+      cleaned_value: nil,
       exception: nil,
       duration: nil,
     ]
@@ -18,8 +19,13 @@ defmodule Scientist.Observation do
     }
     try do
       value = observable.()
+      cleaned = if experiment.clean do
+        experiment.clean.(value)
+      else
+        value
+      end
       duration = System.system_time(@timeunit) - observation.timestamp
-      %Scientist.Observation{observation | value: value, duration: duration}
+      %Scientist.Observation{observation | value: value, duration: duration, cleaned_value: cleaned}
     rescue
       except ->
         %Scientist.Observation{observation | exception: {:raised, except}}
