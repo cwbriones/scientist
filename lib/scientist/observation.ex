@@ -22,14 +22,14 @@ defmodule Scientist.Observation do
       %Scientist.Observation{observation | value: value, duration: duration}
     rescue
       except ->
-        %Scientist.Observation{observation | exception: except}
+        %Scientist.Observation{observation | exception: {:raised, except}}
     catch
       except ->
-        %Scientist.Observation{observation | exception: except}
+        %Scientist.Observation{observation | exception: {:thrown, except}}
     end
   end
 
-  def equivalent?(observation, other, compare) do
+  def equivalent?(observation, other, compare \\ &(&1 == &2)) do
     case {observation.exception, other.exception} do
       {nil, nil} ->
         compare.(observation.value, other.value)
@@ -39,5 +39,12 @@ defmodule Scientist.Observation do
     end
   end
 
-  def raised?(%Scientist.Observation{exception: e}), do: not is_nil(e)
+  def except?(%Scientist.Observation{exception: nil}), do: false
+  def except?(_), do: true
+
+  def raised?(%Scientist.Observation{exception: {:raised, _}}), do: true
+  def raised?(_), do: false
+
+  def thrown?(%Scientist.Observation{exception: {:thrown, _}}), do: true
+  def thrown?(_), do: false
 end
