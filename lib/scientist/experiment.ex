@@ -9,6 +9,27 @@ defmodule Scientist.Experiment do
       comparator: &(&1 == &2)
     ]
 
+  @callback enabled?() :: Boolean
+  @callback publish(%Scientist.Result{}) :: any
+
+  defmacro __using__(_opts) do
+    quote do
+      @behaviour unquote(__MODULE__)
+
+      def default_context, do: %{}
+
+      def run(experiment, opts \\ []) do
+        unquote(__MODULE__).run(__MODULE__, experiment, opts)
+      end
+
+      def raised(_experiment, _operation, except), do: raise except
+
+      def thrown(_experiment, _operation, except), do: throw except
+
+      defoverridable [ default_context: 0, raised: 3, thrown: 3 ]
+    end
+  end
+
   def new(name \\ "#{__MODULE__}", opts \\ []) do
     context = Keyword.get(opts, :context, %{})
     %__MODULE__{
@@ -17,10 +38,10 @@ defmodule Scientist.Experiment do
     }
   end
 
-  def run(experiment), do: run(experiment, [])
-
   # Runs the experiment
-  def run(exp = %Scientist.Experiment{observables: %{"control" => _}}, opts) do
+  def run(experiment, opts \\ []), do: run(Scientist.Default, experiment, opts)
+
+  def run(module, exp = %Scientist.Experiment{observables: %{"control" => _}}, opts) do
     observations = exp.observables
     |> Enum.shuffle
     |> Enum.map(&(eval_observable(exp, &1)))
@@ -30,20 +51,36 @@ defmodule Scientist.Experiment do
       o.name == "control"
     end)
 
-    if Scientist.Observation.raised?(control) do
-      raise control.exception
-    end
-    result = Scientist.Result.new(exp, control, candidates)
-    if Keyword.get(opts, :result, false) do
-      result
-    else
-      control.value
+    mismatched = Enum.reject(candidates, &observations_match?(module, exp, control, &1))
+    result = Scientist.Result.new(exp, control, candidates, mismatched)
+
+    module.publish(result)
+
+    cond do
+      Keyword.get(opts, :result, false) -> result
+      Scientist.Observation.raised?(control) -> raise control.except
+      Scientist.Observation.thrown?(control) -> throw control.except
+      true -> control.value
     end
   end
-  def run(_, _), do: raise ArgumentError, message: "Experiment must have a control to run"
+  def run(_, _, _), do: raise ArgumentError, message: "Experiment must have a control to run"
 
   defp eval_observable(experiment, {name, observable}) do
     Scientist.Observation.new(experiment, name, observable)
+  end
+
+  defp observations_match?(module, experiment, control, candidate) do
+    try do
+      Scientist.Observation.equivalent?(control, candidate, experiment.comparator)
+    rescue
+      except ->
+        module.raised(experiment, :compare, except)
+        false
+    catch
+      except ->
+        module.thrown(experiment, :compare, except)
+        false
+    end
   end
 
   # Adds the given observable to the experiment as a control

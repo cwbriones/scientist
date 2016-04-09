@@ -80,4 +80,27 @@ defmodule ExperimentTest do
 
     assert matched
   end
+
+  defmodule RaiseExperiment do
+    use Scientist.Experiment
+
+    def enabled?, do: true
+    def publish(_), do: :ok
+
+    def raised(experiment, operation, except) do
+      # Send a message with the exception to the parent process
+      parent = experiment.context[:parent]
+      send(parent, {operation, except})
+    end
+  end
+
+  test "it reports errors raised during compare" do
+    Experiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.set_comparator(fn _, _ -> raise "SCARY ERROR" end)
+    |> RaiseExperiment.run(result: true)
+
+    assert_received {:compare, %RuntimeError{message: "SCARY ERROR"}}
+  end
 end
