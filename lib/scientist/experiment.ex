@@ -6,7 +6,8 @@ defmodule Scientist.Experiment do
       run_if_fn: nil,
       result: nil,
       clean: nil,
-      comparator: &(&1 == &2)
+      comparator: &(&1 == &2),
+      module: Scientist.Default
     ]
 
   @callback enabled?() :: Boolean
@@ -18,6 +19,12 @@ defmodule Scientist.Experiment do
 
       def default_context, do: %{}
 
+      def name, do: "#{__MODULE__}"
+
+      def new(name \\ name, opts \\ []) do
+        unquote(__MODULE__).new(__MODULE__, name, opts)
+      end
+
       def run(experiment, opts \\ []) do
         unquote(__MODULE__).run(__MODULE__, experiment, opts)
       end
@@ -26,15 +33,18 @@ defmodule Scientist.Experiment do
 
       def thrown(_experiment, _operation, except), do: throw except
 
-      defoverridable [ default_context: 0, raised: 3, thrown: 3 ]
+      defoverridable [ default_context: 0, name: 0, raised: 3, thrown: 3 ]
     end
   end
 
-  def new(name \\ "#{__MODULE__}", opts \\ []) do
+  def new(name \\ "#{__MODULE__}"), do: new(name, [])
+  def new(name, opts), do: new(Scientist.Default, name, opts)
+  def new(module, name, opts) do
     context = Keyword.get(opts, :context, %{})
     %__MODULE__{
       name: name,
-      context: context
+      context: context,
+      module: module
     }
   end
 

@@ -103,4 +103,14 @@ defmodule ExperimentTest do
 
     assert_received {:compare, %RuntimeError{message: "SCARY ERROR"}}
   end
+
+  test "it reports errors raised during clean" do
+    RaiseExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.clean(fn _ -> raise "YOU GOT SPOOKED" end)
+    |> RaiseExperiment.run(result: true)
+
+    assert_received {:clean, %RuntimeError{message: "YOU GOT SPOOKED"}}
+  end
 end

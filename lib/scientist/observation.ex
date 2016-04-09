@@ -20,7 +20,13 @@ defmodule Scientist.Observation do
     try do
       value = observable.()
       cleaned = if experiment.clean do
-        experiment.clean.(value)
+        try do
+          experiment.clean.(value)
+        rescue
+          except -> experiment.module.raised(experiment, :clean, except)
+        catch
+          except -> experiment.module.raised(experiment, :clean, except)
+        end
       else
         value
       end
