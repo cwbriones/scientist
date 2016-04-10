@@ -7,13 +7,13 @@ defmodule Scientist.Result do
       ignored: []
     ]
 
-  def new(experiment, control, candidates, mismatched) do
+  def new(experiment, control, candidates, mismatched, ignored) do
     %Scientist.Result{
       experiment: experiment,
       candidates: candidates,
       control: control,
       mismatched: mismatched,
-      ignored: []
+      ignored: ignored
     }
   end
 

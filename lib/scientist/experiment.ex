@@ -7,6 +7,7 @@ defmodule Scientist.Experiment do
       before_run: nil,
       result: nil,
       clean: nil,
+      ignore: [],
       comparator: &(&1 == &2),
       module: Scientist.Default
     ]
@@ -88,8 +89,13 @@ defmodule Scientist.Experiment do
         o.name == "control"
       end)
 
-      mismatched = Enum.reject(candidates, &observations_match?(exp, control, &1))
-      result = Scientist.Result.new(exp, control, candidates, mismatched)
+      ignore_fns = Enum.reverse(exp.ignore)
+
+      {ignored, mismatched} = candidates
+      |> Enum.reject(&observations_match?(exp, control, &1))
+      |> Enum.partition(&should_ignore_mismatch?(exp, ignore_fns, control, &1))
+
+      result = Scientist.Result.new(exp, control, candidates, mismatched, ignored)
 
       guarded exp, :publish, do: exp.module.publish(result)
 
@@ -104,6 +110,17 @@ defmodule Scientist.Experiment do
     end
   end
   def run(_, _), do: raise ArgumentError, message: "Experiment must have a control to run"
+
+  def should_ignore_mismatch?(experiment, control, candidate) do
+    ignores = experiment.ignore |> Enum.reverse
+    should_ignore_mismatch?(experiment, ignores, control, candidate)
+  end
+
+  defp should_ignore_mismatch?(experiment, ignores, control, candidate) do
+    Enum.any?(ignores, fn i ->
+      guarded experiment, :ignore, do: i.(control, candidate)
+    end)
+  end
 
   defp eval_observable(experiment, {name, observable}) do
     Scientist.Observation.new(experiment, name, observable)
@@ -158,6 +175,14 @@ defmodule Scientist.Experiment do
   """
   def compare_with(exp, c) do
     %__MODULE__{exp | comparator: c}
+  end
+
+  @doc """
+  Adds an ignore function to the experiment. The experiment will ignore a mismatch whenever
+  this function returns true.
+  """
+  def ignore(exp, i) do
+    %__MODULE__{exp | ignore: [i | exp.ignore]}
   end
 
   @doc """

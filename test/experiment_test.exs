@@ -2,6 +2,8 @@ defmodule ExperimentTest do
   use ExUnit.Case
 
   alias Scientist.Experiment
+  alias Scientist.Observation
+  alias Scientist.Result
 
   test "it has a default name" do
     assert Experiment.new.name == "Elixir.Scientist.Experiment"
@@ -256,7 +258,6 @@ defmodule ExperimentTest do
     |> Experiment.run
 
     assert_received {:run_if, %RuntimeError{message: "WHOA"}}
-    # assert_received {:thrown, :run_if, "WHOA"}
   end
 
   test "it uses the before_run function when run" do
@@ -278,5 +279,85 @@ defmodule ExperimentTest do
     |> Experiment.run
 
     refute_received "hi"
+
+    NotEnabledExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.run
+
+    refute_received "hi"
+  end
+
+  test "it does not ignore observations by default" do
+    ex = Experiment.new
+    obs_a = Observation.new(ex, "control", fn -> 1 end)
+    obs_b = Observation.new(ex, "candidate", fn -> 2 end)
+
+    refute Experiment.should_ignore_mismatch?(ex, obs_a, obs_b)
+  end
+
+  test "it reports mismatches as ignored when an ignored fn returns true" do
+    ex = Experiment.new |> Experiment.ignore(fn _, _ -> true end)
+    obs_a = Observation.new(ex, "control", fn -> 1 end)
+    obs_b = Observation.new(ex, "candidate", fn -> 2 end)
+
+    assert Experiment.should_ignore_mismatch?(ex, obs_a, obs_b)
+  end
+
+  test "it only calls its ignore functions if there is a mismatch" do
+    Experiment.new
+    |> Experiment.add_control(fn -> 1 end)
+    |> Experiment.add_observable("candidate", fn -> 1 end)
+    |> Experiment.ignore(fn _, _ -> send(self, :ignore); false end)
+    |> Experiment.run
+
+    refute_received :ignore
+  end
+
+  test "it attempts every ignore function passed in" do
+    Experiment.new
+    |> Experiment.add_control(fn -> 1 end)
+    |> Experiment.add_observable("candidate", fn -> 2 end)
+    |> Experiment.ignore(fn _, _ -> send(self, :ignore_one); false end)
+    |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); false end)
+    |> Experiment.run
+
+    assert_received :ignore_one
+    assert_received :ignore_two
+  end
+
+  test "it only attempts until a single ignore function returns true" do
+    Experiment.new
+    |> Experiment.add_control(fn -> 1 end)
+    |> Experiment.add_observable("candidate", fn -> 2 end)
+    |> Experiment.ignore(fn _, _ -> send(self, :ignore_one); true end)
+    |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); false end)
+    |> Experiment.run
+
+    assert_received :ignore_one
+    refute_received :ignore_two
+  end
+
+  test "it reports errors raised in an ignore fn" do
+    TestExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> 1 end)
+    |> Experiment.add_observable("candidate", fn -> 2 end)
+    |> Experiment.ignore(fn _, _ -> raise "foo" end)
+    |> Experiment.run
+
+    assert_received {:ignore, %RuntimeError{message: "foo"}}
+  end
+
+  test "it skips ignore blocks that raise an exception" do
+    did_ignore = TestExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> 1 end)
+    |> Experiment.add_observable("candidate", fn -> 2 end)
+    |> Experiment.ignore(fn _, _ -> raise "foo" end)
+    |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); true end)
+    |> Experiment.run(result: true)
+    |> Result.ignored?
+
+    assert did_ignore
+    assert_received :ignore_two
   end
 end
