@@ -37,6 +37,10 @@ defmodule Scientist.Experiment do
     end
   end
 
+  @doc """
+  Creates an experiment with the given name and context, using Scientist.Default as a
+  callback module when none is provided.
+  """
   def new(name \\ "#{__MODULE__}"), do: new(name, [])
   def new(name, opts), do: new(Scientist.Default, name, opts)
   def new(module, name, opts) do context = Keyword.get(opts, :context, %{})
@@ -47,7 +51,29 @@ defmodule Scientist.Experiment do
     }
   end
 
-  # Runs the experiment
+  @doc """
+  Executes the given block, calling thrown and raised with the given reason if the block
+  throws or raises an exception.
+  """
+  defmacro guarded(exp, operation, do: block) do
+    quote do
+      try do
+        unquote(block)
+      catch
+        except ->
+          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
+          nil
+      rescue
+        except ->
+          unquote(exp).module.raised(unquote(exp), unquote(operation), except)
+          nil
+      end
+    end
+  end
+
+  @doc """
+  Runs the experiment, using Scientist.Default as a callback module if none is provided.
+  """
   def run(experiment, opts \\ []), do: run(Scientist.Default, experiment, opts)
 
   def run(module, exp = %Scientist.Experiment{observables: %{"control" => c}}, opts) do
@@ -61,16 +87,10 @@ defmodule Scientist.Experiment do
         o.name == "control"
       end)
 
-      mismatched = Enum.reject(candidates, &observations_match?(module, exp, control, &1))
+      mismatched = Enum.reject(candidates, &observations_match?(exp, control, &1))
       result = Scientist.Result.new(exp, control, candidates, mismatched)
 
-      try do
-        module.publish(result)
-      rescue
-        except -> module.raised(exp, :publish, except)
-      catch
-        except -> module.thrown(exp, :publish, except)
-      end
+      guarded exp, :publish, do: module.publish(result)
 
       cond do
         Keyword.get(opts, :result, false) -> result
@@ -88,63 +108,67 @@ defmodule Scientist.Experiment do
     Scientist.Observation.new(experiment, name, observable)
   end
 
-  defp observations_match?(module, experiment, control, candidate) do
-    Scientist.Observation.equivalent?(control, candidate, experiment.comparator)
-  rescue
-    except ->
-      module.raised(experiment, :compare, except)
-      false
-  catch
-    except ->
-      module.thrown(experiment, :compare, except)
-      false
-  end
-
-  defp should_run?(exp = %Scientist.Experiment{module: module, run_if_fn: f}) do
-    module.enabled? and run_if_allows?(exp)
-  rescue
-    except ->
-      module.raised(exp, :enabled, except)
-      false
-  catch
-    except ->
-      module.raised(exp, :enabled, except)
-      false
-  end
-
-  defp run_if_allows?(exp = %Scientist.Experiment{run_if_fn: f}) do
-    try do
-      is_nil(f) or f.()
-    rescue
-      except ->
-        exp.module.raised(exp, :run_if, except)
-        false
-    catch
-      except ->
-        exp.module.thrown(exp, :run_if, except)
-        false
+  @doc """
+  Returns true if the two observations match, reporting an error to the callback module
+  if an exception is caught.
+  """
+  def observations_match?(experiment, control, candidate) do
+    guarded experiment, :compare do
+      Scientist.Observation.equivalent?(control, candidate, experiment.comparator)
     end
   end
 
-  # Adds the given observable to the experiment as a control
+  @doc """
+  Returns true if the experiment should run, reporting an error to the callback module
+  if an exception is caught.
+  """
+  def should_run?(experiment = %Scientist.Experiment{module: module}) do
+    guarded experiment, :enabled, do: module.enabled? and run_if_allows?(experiment)
+  end
+
+  @doc """
+  Returns the value of the experiment's run_if function, or true if one does not exist.
+  Reports an error to the callback module if an exception is caught.
+  """
+  def run_if_allows?(experiment = %Scientist.Experiment{run_if_fn: f}) do
+    guarded experiment, :run_if, do: is_nil(f) or f.()
+  end
+
+  @doc """
+  Adds the given function to the experiment as the control.
+
+  Raises ArgumentError if the given experiment already has a control.
+  """
   def add_control(%Scientist.Experiment{observables: %{"control" => _}}, _) do
     raise ArgumentError, message: "Experiment can only have a single control"
   end
   def add_control(exp, observable), do: add_observable(exp, "control", observable)
 
+  @doc """
+  Adds the given function to the experiment as an observable.
+  """
   def add_observable(exp, name, observable) do
     new_observables = exp.observables |> Map.put(name, observable)
     %__MODULE__{exp | observables: new_observables}
   end
 
+  @doc """
+  Adds a function to the experiment that is used to compare observations.
+  """
   def compare_with(exp, c) do
     %__MODULE__{exp | comparator: c}
   end
 
+  @doc """
+  Adds a function to the experiment that is used to clean observed values.
+  """
   def clean_with(exp, cleaner) do
     %__MODULE__{exp | clean: cleaner}
   end
 
+  @doc """
+  Adds a function to the experiment that is used to determine if it should run.
+  """
   def set_run_if(exp, run_if_fn) do
     %__MODULE__{exp | run_if_fn: run_if_fn}
   end

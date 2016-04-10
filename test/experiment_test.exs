@@ -103,7 +103,7 @@ defmodule ExperimentTest do
   end
 
   test "it reports errors raised during compare" do
-    experiment = Experiment.new("test", context: %{parent: self})
+    experiment = TestExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
 
