@@ -84,6 +84,10 @@ defmodule ExperimentTest do
   defmodule TestExperiment do
     use Scientist.Experiment
 
+    def name, do: "My awesome experiment"
+
+    def default_context, do: %{foo: :foo}
+
     def enabled?, do: true
     def publish(result) do
       context = result.experiment.context
@@ -100,6 +104,20 @@ defmodule ExperimentTest do
       parent = experiment.context[:parent]
       send(parent, {:thrown, operation, except})
     end
+  end
+
+  test "it uses the default context" do
+    assert TestExperiment.new.context == %{foo: :foo}
+
+    assert TestExperiment.new("test", context: %{foo: :bar}).context == %{foo: :bar}
+
+    custom_context = %{bar: :bar}
+    assert TestExperiment.new("test", context: custom_context).context == %{foo: :foo, bar: :bar}
+
+  end
+
+  test "it uses the default name" do
+    assert TestExperiment.new.name == "My awesome experiment"
   end
 
   test "it reports errors raised during compare" do

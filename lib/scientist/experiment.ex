@@ -23,7 +23,10 @@ defmodule Scientist.Experiment do
       def name, do: "#{__MODULE__}"
 
       def new(name \\ name, opts \\ []) do
-        unquote(__MODULE__).new(__MODULE__, name, opts)
+        custom = Keyword.get(opts, :context, %{})
+        merged_context = default_context |> Map.merge(custom)
+        new_opts = Keyword.put(opts, :context, merged_context)
+        unquote(__MODULE__).new(__MODULE__, name, new_opts)
       end
 
       def raised(_experiment, _operation, except), do: raise except
