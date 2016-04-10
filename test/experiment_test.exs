@@ -240,4 +240,25 @@ defmodule ExperimentTest do
     assert_received {:run_if, %RuntimeError{message: "WHOA"}}
     # assert_received {:thrown, :run_if, "WHOA"}
   end
+
+  test "it uses the before_run function when run" do
+    TestExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.set_before_run(fn -> send(self, "hi") end)
+    |> Experiment.run
+
+    assert_received "hi"
+  end
+
+  test "it ignores the before_run function when it isn't run" do
+    TestExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.set_before_run(fn -> send(self, "hi") end)
+    |> Experiment.set_run_if(fn -> false end)
+    |> Experiment.run
+
+    refute_received "hi"
+  end
 end

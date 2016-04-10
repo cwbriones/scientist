@@ -4,6 +4,7 @@ defmodule Scientist.Experiment do
       observables: %{},
       context: %{},
       run_if_fn: nil,
+      before_run: nil,
       result: nil,
       clean: nil,
       comparator: &(&1 == &2),
@@ -73,6 +74,8 @@ defmodule Scientist.Experiment do
   def run(exp, opts \\ [])
   def run(exp = %Scientist.Experiment{observables: %{"control" => c}}, opts) do
     if should_run?(exp) do
+      is_nil(exp.before_run) or exp.before_run.()
+
       observations = exp.observables
       |> Enum.shuffle
       |> Enum.map(&(eval_observable(exp, &1)))
@@ -166,5 +169,12 @@ defmodule Scientist.Experiment do
   """
   def set_run_if(exp, run_if_fn) do
     %__MODULE__{exp | run_if_fn: run_if_fn}
+  end
+
+  @doc """
+  Adds a function to the experiment that should only execute when the experiment is run.
+  """
+  def set_before_run(exp, before_run) do
+    %__MODULE__{exp | before_run: before_run}
   end
 end
