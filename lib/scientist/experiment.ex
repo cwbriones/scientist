@@ -89,21 +89,41 @@ defmodule Scientist.Experiment do
   end
 
   defp observations_match?(module, experiment, control, candidate) do
+    Scientist.Observation.equivalent?(control, candidate, experiment.comparator)
+  rescue
+    except ->
+      module.raised(experiment, :compare, except)
+      false
+  catch
+    except ->
+      module.thrown(experiment, :compare, except)
+      false
+  end
+
+  defp should_run?(exp = %Scientist.Experiment{module: module, run_if_fn: f}) do
+    module.enabled? and run_if_allows?(exp)
+  rescue
+    except ->
+      module.raised(exp, :enabled, except)
+      false
+  catch
+    except ->
+      module.raised(exp, :enabled, except)
+      false
+  end
+
+  defp run_if_allows?(exp = %Scientist.Experiment{run_if_fn: f}) do
     try do
-      Scientist.Observation.equivalent?(control, candidate, experiment.comparator)
+      is_nil(f) or f.()
     rescue
       except ->
-        module.raised(experiment, :compare, except)
+        exp.module.raised(exp, :run_if, except)
         false
     catch
       except ->
-        module.thrown(experiment, :compare, except)
+        exp.module.thrown(exp, :run_if, except)
         false
     end
-  end
-
-  defp should_run?(%Scientist.Experiment{module: module, run_if_fn: f}) do
-    module.enabled? and (is_nil(f) or f.())
   end
 
   # Adds the given observable to the experiment as a control

@@ -180,7 +180,7 @@ defmodule ExperimentTest do
   end
 
   test "it does not run when enabled? returns false" do
-    result = NotEnabledExperiment.new("test")
+    NotEnabledExperiment.new("test")
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> NotEnabledExperiment.run(result: true)
@@ -188,8 +188,30 @@ defmodule ExperimentTest do
     refute_received :published
   end
 
+  defmodule BadEnabledExperiment do
+    use Scientist.Experiment
+
+    def enabled?, do: raise "WHOA"
+    def publish(_), do: :ok
+
+    def raised(experiment, operation, except) do
+      # Send a message with the exception to the parent process
+      parent = experiment.context[:parent]
+      send(parent, {operation, except})
+    end
+  end
+
+  test "it reports errors raised in enabled?" do
+    BadEnabledExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> BadEnabledExperiment.run
+
+    assert_received {:enabled, %RuntimeError{message: "WHOA"}}
+  end
+
   test "it runs when run_if returns true" do
-    result = TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_run_if(fn -> true end)
@@ -199,12 +221,23 @@ defmodule ExperimentTest do
   end
 
   test "it does not run when run_if returns false" do
-    result = TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_run_if(fn -> false end)
     |> TestExperiment.run(result: true)
 
     refute_received :published
+  end
+
+  test "it reports errors raised in run_if" do
+    TestExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.set_run_if(fn -> raise "WHOA" end)
+    |> TestExperiment.run
+
+    assert_received {:run_if, %RuntimeError{message: "WHOA"}}
+    # assert_received {:thrown, :run_if, "WHOA"}
   end
 end
