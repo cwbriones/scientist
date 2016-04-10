@@ -109,13 +109,13 @@ defmodule ExperimentTest do
 
     experiment
     |> Experiment.compare_with(fn _, _ -> raise "SCARY ERROR" end)
-    |> TestExperiment.run(result: true)
+    |> Experiment.run(result: true)
 
     assert_received {:compare, %RuntimeError{message: "SCARY ERROR"}}
 
     experiment
     |> Experiment.compare_with(fn _, _ -> throw "SCARY ERROR" end)
-    |> TestExperiment.run(result: true)
+    |> Experiment.run(result: true)
 
     assert_received {:thrown, :compare, "SCARY ERROR"}
   end
@@ -127,13 +127,13 @@ defmodule ExperimentTest do
 
     experiment
     |> Experiment.clean_with(fn _ -> raise "YOU GOT SPOOKED" end)
-    |> TestExperiment.run(result: true)
+    |> Experiment.run(result: true)
 
     assert_received {:clean, %RuntimeError{message: "YOU GOT SPOOKED"}}
 
     experiment
     |> Experiment.clean_with(fn _ -> throw "YOU GOT SPOOKED" end)
-    |> TestExperiment.run(result: true)
+    |> Experiment.run(result: true)
 
     assert_received {:thrown, :clean, "YOU GOT SPOOKED"}
   end
@@ -142,7 +142,7 @@ defmodule ExperimentTest do
     TestExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
-    |> TestExperiment.run(result: true)
+    |> Experiment.run(result: true)
 
     assert_received :published
   end
@@ -164,7 +164,7 @@ defmodule ExperimentTest do
     BadPublishExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
-    |> BadPublishExperiment.run(result: true)
+    |> Experiment.run(result: true)
 
     assert_received {:publish, %RuntimeError{message: "ka-BOOM"}}
   end
@@ -183,7 +183,7 @@ defmodule ExperimentTest do
     NotEnabledExperiment.new("test")
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
-    |> NotEnabledExperiment.run(result: true)
+    |> Experiment.run(result: true)
 
     refute_received :published
   end
@@ -205,7 +205,7 @@ defmodule ExperimentTest do
     BadEnabledExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
-    |> BadEnabledExperiment.run
+    |> Experiment.run
 
     assert_received {:enabled, %RuntimeError{message: "WHOA"}}
   end
@@ -215,7 +215,7 @@ defmodule ExperimentTest do
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_run_if(fn -> true end)
-    |> TestExperiment.run(result: true)
+    |> Experiment.run
 
     assert_received :published
   end
@@ -225,7 +225,7 @@ defmodule ExperimentTest do
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_run_if(fn -> false end)
-    |> TestExperiment.run(result: true)
+    |> Experiment.run
 
     refute_received :published
   end
@@ -235,7 +235,7 @@ defmodule ExperimentTest do
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_run_if(fn -> raise "WHOA" end)
-    |> TestExperiment.run
+    |> Experiment.run
 
     assert_received {:run_if, %RuntimeError{message: "WHOA"}}
     # assert_received {:thrown, :run_if, "WHOA"}

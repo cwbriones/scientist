@@ -25,10 +25,6 @@ defmodule Scientist.Experiment do
         unquote(__MODULE__).new(__MODULE__, name, opts)
       end
 
-      def run(experiment, opts \\ []) do
-        unquote(__MODULE__).run(__MODULE__, experiment, opts)
-      end
-
       def raised(_experiment, _operation, except), do: raise except
 
       def thrown(_experiment, _operation, except), do: throw except
@@ -74,9 +70,8 @@ defmodule Scientist.Experiment do
   @doc """
   Runs the experiment, using Scientist.Default as a callback module if none is provided.
   """
-  def run(experiment, opts \\ []), do: run(Scientist.Default, experiment, opts)
-
-  def run(module, exp = %Scientist.Experiment{observables: %{"control" => c}}, opts) do
+  def run(exp, opts \\ [])
+  def run(exp = %Scientist.Experiment{observables: %{"control" => c}}, opts) do
     if should_run?(exp) do
       observations = exp.observables
       |> Enum.shuffle
@@ -90,7 +85,7 @@ defmodule Scientist.Experiment do
       mismatched = Enum.reject(candidates, &observations_match?(exp, control, &1))
       result = Scientist.Result.new(exp, control, candidates, mismatched)
 
-      guarded exp, :publish, do: module.publish(result)
+      guarded exp, :publish, do: exp.module.publish(result)
 
       cond do
         Keyword.get(opts, :result, false) -> result
@@ -102,7 +97,7 @@ defmodule Scientist.Experiment do
       c.()
     end
   end
-  def run(_, _, _), do: raise ArgumentError, message: "Experiment must have a control to run"
+  def run(_, _), do: raise ArgumentError, message: "Experiment must have a control to run"
 
   defp eval_observable(experiment, {name, observable}) do
     Scientist.Observation.new(experiment, name, observable)
