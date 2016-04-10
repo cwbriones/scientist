@@ -81,7 +81,7 @@ defmodule ExperimentTest do
     assert matched
   end
 
-  defmodule RaiseExperiment do
+  defmodule TestExperiment do
     use Scientist.Experiment
 
     def enabled?, do: true
@@ -109,40 +109,40 @@ defmodule ExperimentTest do
 
     experiment
     |> Experiment.compare_with(fn _, _ -> raise "SCARY ERROR" end)
-    |> RaiseExperiment.run(result: true)
+    |> TestExperiment.run(result: true)
 
     assert_received {:compare, %RuntimeError{message: "SCARY ERROR"}}
 
     experiment
     |> Experiment.compare_with(fn _, _ -> throw "SCARY ERROR" end)
-    |> RaiseExperiment.run(result: true)
+    |> TestExperiment.run(result: true)
 
     assert_received {:thrown, :compare, "SCARY ERROR"}
   end
 
   test "it reports errors raised during clean" do
-    experiment = RaiseExperiment.new("test", context: %{parent: self})
+    experiment = TestExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
 
     experiment
     |> Experiment.clean_with(fn _ -> raise "YOU GOT SPOOKED" end)
-    |> RaiseExperiment.run(result: true)
+    |> TestExperiment.run(result: true)
 
     assert_received {:clean, %RuntimeError{message: "YOU GOT SPOOKED"}}
 
     experiment
     |> Experiment.clean_with(fn _ -> throw "YOU GOT SPOOKED" end)
-    |> RaiseExperiment.run(result: true)
+    |> TestExperiment.run(result: true)
 
     assert_received {:thrown, :clean, "YOU GOT SPOOKED"}
   end
 
   test "it uses the publish function during run" do
-    RaiseExperiment.new("test", context: %{parent: self})
+    TestExperiment.new("test", context: %{parent: self})
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
-    |> RaiseExperiment.run(result: true)
+    |> TestExperiment.run(result: true)
 
     assert_received :published
   end
@@ -167,5 +167,44 @@ defmodule ExperimentTest do
     |> BadPublishExperiment.run(result: true)
 
     assert_received {:publish, %RuntimeError{message: "ka-BOOM"}}
+  end
+
+  defmodule NotEnabledExperiment do
+    use Scientist.Experiment
+
+    def enabled?, do: false
+    def publish(result) do
+      parent = result.experiment.context[:parent]
+      send(parent, :published)
+    end
+  end
+
+  test "it does not run when enabled? returns false" do
+    result = NotEnabledExperiment.new("test")
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> NotEnabledExperiment.run(result: true)
+
+    refute_received :published
+  end
+
+  test "it runs when run_if returns true" do
+    result = TestExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.set_run_if(fn -> true end)
+    |> TestExperiment.run(result: true)
+
+    assert_received :published
+  end
+
+  test "it does not run when run_if returns false" do
+    result = TestExperiment.new("test", context: %{parent: self})
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.set_run_if(fn -> false end)
+    |> TestExperiment.run(result: true)
+
+    refute_received :published
   end
 end
