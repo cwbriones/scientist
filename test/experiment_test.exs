@@ -297,7 +297,8 @@ defmodule ExperimentTest do
   end
 
   test "it reports mismatches as ignored when an ignored fn returns true" do
-    ex = Experiment.new |> Experiment.ignore(fn _, _ -> true end)
+    ignore_fn = fn x, y -> x == 1 and y == 2 end
+    ex = Experiment.new |> Experiment.ignore(ignore_fn)
     obs_a = Observation.new(ex, "control", fn -> 1 end)
     obs_b = Observation.new(ex, "candidate", fn -> 2 end)
 

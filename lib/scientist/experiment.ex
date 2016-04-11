@@ -19,10 +19,19 @@ defmodule Scientist.Experiment do
     quote do
       @behaviour unquote(__MODULE__)
 
+      @doc """
+      Returns the default context for an experiment.
+      """
       def default_context, do: %{}
 
+      @doc """
+      Returns the default name for an experiment.
+      """
       def name, do: "#{__MODULE__}"
 
+      @doc """
+      Creates a new experiment.
+      """
       def new(name \\ name, opts \\ []) do
         custom = Keyword.get(opts, :context, %{})
         merged_context = default_context |> Map.merge(custom)
@@ -30,11 +39,123 @@ defmodule Scientist.Experiment do
         unquote(__MODULE__).new(__MODULE__, name, new_opts)
       end
 
-      def raised(_experiment, _operation, except), do: raise except
+      @doc """
+      Called when an experiment run raises an error during an operation.
+      """
+      def raised(experiment, operation, except), do: raise except
 
+      @doc """
+      Called when an experiment run throws an error during an operation.
+      """
       def thrown(_experiment, _operation, except), do: throw except
 
       defoverridable [ default_context: 0, name: 0, raised: 3, thrown: 3 ]
+
+      @doc """
+      Creates a new experiment with `name` and `opts`, bound to the variable
+      `experiment` within the do block.
+      """
+      defmacro science(name, opts \\ [], do: block) do
+        should_run = Keyword.get(opts, :run, true)
+        exp_opts = Keyword.delete(opts, :run)
+        quote do
+          var!(experiment) = new(unquote(name), unquote(exp_opts))
+          unquote(block)
+          if unquote(should_run) do
+            Scientist.Experiment.run(var!(experiment))
+          else
+            var!(experiment)
+          end
+        end
+      end
+
+      @doc """
+      Adds a control block to the experiment created in `science/3`.
+      """
+      defmacro control(do: block) do
+        quote do
+          c = fn -> unquote(block) end
+          var!(experiment) = Scientist.Experiment.add_control(var!(experiment), c)
+        end
+      end
+
+      @doc """
+      Adds a candidate block to the experiment created in `science/3`.
+      """
+      defmacro candidate(name \\ "candidate", do: block) do
+        quote do
+          c = fn -> unquote(block) end
+          var!(experiment) =
+            Scientist.Experiment.add_observable(var!(experiment), unquote(name), c)
+        end
+      end
+
+      @doc """
+      Adds an ignore block to the experiment created in `science/3`.
+      """
+      defmacro ignore(do: block) do
+        quote do
+          i = fn _, _ -> unquote(block) end
+          var!(experiment) = Scientist.Experiment.ignore(var!(experiment), i)
+        end
+      end
+
+      @doc """
+      Adds an ignore block to the experiment created in `science/3`.
+
+      The control and candidate values will be bound to the declared vars.
+      """
+      defmacro ignore(x, y, do: block) do
+        quote do
+          i = fn (unquote(x), unquote(y)) -> unquote(block) end
+          var!(experiment) = Scientist.Experiment.ignore(var!(experiment), i)
+        end
+      end
+
+      @doc """
+      Adds a compare block to the experiment created in `science/3`.
+
+      The control and candidate values will be bound to the declared vars.
+      """
+      defmacro compare(x, y, do: block) do
+        quote do
+          c = fn (unquote(x), unquote(y)) -> unquote(block) end
+          var!(experiment) = Scientist.Experiment.compare_with(var!(experiment), c)
+        end
+      end
+
+      @doc """
+      Adds a clean function to the experiment created in `science/3`.
+
+      The observed values will be bound to the declared var.
+      """
+      defmacro clean(x, do: block) do
+        quote do
+          c = fn (unquote(x)) -> unquote(block) end
+          var!(experiment) = Scientist.Experiment.clean_with(var!(experiment), c)
+        end
+      end
+
+      @doc """
+      Adds a before_run function to the experiment created in `science/3`.
+      """
+      defmacro before_run(do: block) do
+        quote do
+          b = fn -> unquote(block) end
+          var!(experiment) = Scientist.Experiment.set_before_run(var!(experiment), b)
+        end
+      end
+
+      @doc """
+      Adds a run_if function to the experiment created in `science/3`.
+      """
+      defmacro run_if(do: block) do
+        quote do
+          r = fn -> unquote(block) end
+          var!(experiment) = Scientist.Experiment.set_run_if(var!(experiment), r)
+        end
+      end
+
     end
   end
 
@@ -112,7 +233,7 @@ defmodule Scientist.Experiment do
   def should_ignore_mismatch?(exp, control, candidate) do
     ignores = exp.ignore |> Enum.reverse
     Enum.any?(ignores, fn i ->
-      guarded exp, :ignore, do: i.(control, candidate)
+      guarded exp, :ignore, do: i.(control.value, candidate.value)
     end)
   end
 
