@@ -89,13 +89,7 @@ defmodule Scientist.Experiment do
         o.name == "control"
       end)
 
-      ignore_fns = Enum.reverse(exp.ignore)
-
-      {ignored, mismatched} = candidates
-      |> Enum.reject(&observations_match?(exp, control, &1))
-      |> Enum.partition(&should_ignore_mismatch?(exp, ignore_fns, control, &1))
-
-      result = Scientist.Result.new(exp, control, candidates, mismatched, ignored)
+      result = Scientist.Result.new(exp, control, candidates)
 
       guarded exp, :publish, do: exp.module.publish(result)
 
@@ -111,14 +105,14 @@ defmodule Scientist.Experiment do
   end
   def run(_, _), do: raise ArgumentError, message: "Experiment must have a control to run"
 
-  def should_ignore_mismatch?(experiment, control, candidate) do
-    ignores = experiment.ignore |> Enum.reverse
-    should_ignore_mismatch?(experiment, ignores, control, candidate)
-  end
-
-  defp should_ignore_mismatch?(experiment, ignores, control, candidate) do
+  @doc """
+  Returns true if an experiment determines a mismatch should be ignored, based on its
+  ignore functions.
+  """
+  def should_ignore_mismatch?(exp, control, candidate) do
+    ignores = exp.ignore |> Enum.reverse
     Enum.any?(ignores, fn i ->
-      guarded experiment, :ignore, do: i.(control, candidate)
+      guarded exp, :ignore, do: i.(control, candidate)
     end)
   end
 

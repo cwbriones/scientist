@@ -1,6 +1,9 @@
 defmodule Scientist.Observation do
   @timeunit :milli_seconds
 
+  require Scientist.Experiment
+  import  Scientist.Experiment, only: [guarded: 3]
+
   defstruct [
       name: "",
       experiment: nil,
@@ -11,6 +14,11 @@ defmodule Scientist.Observation do
       duration: nil,
     ]
 
+  @doc """
+  Creates a new observation for the experiment.
+
+  Evaluates observable, capturing any exceptions raised.
+  """
   def new(experiment, name, observable) do
     observation = %Scientist.Observation{
       name: name,
@@ -20,13 +28,7 @@ defmodule Scientist.Observation do
     try do
       value = observable.()
       cleaned = if experiment.clean do
-        try do
-          experiment.clean.(value)
-        rescue
-          except -> experiment.module.raised(experiment, :clean, except)
-        catch
-          except -> experiment.module.thrown(experiment, :clean, except)
-        end
+        guarded experiment, :clean, do: experiment.clean.(value)
       else
         value
       end
@@ -41,6 +43,11 @@ defmodule Scientist.Observation do
     end
   end
 
+  @doc """
+  Returns true if the observations match with the compare function.
+
+  Defaults to comparing by a direct equality.
+  """
   def equivalent?(observation, other, compare \\ &(&1 == &2)) do
     case {observation.exception, other.exception} do
       {nil, nil} ->
@@ -51,12 +58,21 @@ defmodule Scientist.Observation do
     end
   end
 
+  @doc """
+  Returns true if the observation threw or raised an exception.
+  """
   def except?(%Scientist.Observation{exception: nil}), do: false
   def except?(_), do: true
 
+  @doc """
+  Returns true if the observation raised an exception.
+  """
   def raised?(%Scientist.Observation{exception: {:raised, _}}), do: true
   def raised?(_), do: false
 
+  @doc """
+  Returns true if the observation threw an exception.
+  """
   def thrown?(%Scientist.Observation{exception: {:thrown, _}}), do: true
   def thrown?(_), do: false
 end
