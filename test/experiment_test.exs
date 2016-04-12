@@ -91,20 +91,14 @@ defmodule ExperimentTest do
     def default_context, do: %{foo: :foo}
 
     def enabled?, do: true
-    def publish(result) do
-      context = result.experiment.context
-      send(context.parent, :published)
+    def publish(_), do: send(self, :published)
+
+    def raised(_experiment, operation, except) do
+      send(self, {operation, except})
     end
 
-    def raised(experiment, operation, except) do
-      # Send a message with the exception to the parent process
-      parent = experiment.context[:parent]
-      send(parent, {operation, except})
-    end
-
-    def thrown(experiment, operation, except) do
-      parent = experiment.context[:parent]
-      send(parent, {:thrown, operation, except})
+    def thrown(_experiment, operation, except) do
+      send(self, {:thrown, operation, except})
     end
   end
 
@@ -123,7 +117,7 @@ defmodule ExperimentTest do
   end
 
   test "it reports errors raised during compare" do
-    experiment = TestExperiment.new("test", context: %{parent: self})
+    experiment = TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
 
@@ -141,7 +135,7 @@ defmodule ExperimentTest do
   end
 
   test "it reports errors raised during clean" do
-    experiment = TestExperiment.new("test", context: %{parent: self})
+    experiment = TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
 
@@ -159,7 +153,7 @@ defmodule ExperimentTest do
   end
 
   test "it uses the publish function during run" do
-    TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.run(result: true)
@@ -173,15 +167,13 @@ defmodule ExperimentTest do
     def enabled?, do: true
     def publish(_), do: raise "ka-BOOM"
 
-    def raised(experiment, operation, except) do
-      # Send a message with the exception to the parent process
-      parent = experiment.context[:parent]
-      send(parent, {operation, except})
+    def raised(_experiment, operation, except) do
+      send(self, {operation, except})
     end
   end
 
   test "it reports errors raised during publish" do
-    BadPublishExperiment.new("test", context: %{parent: self})
+    BadPublishExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.run(result: true)
@@ -193,14 +185,11 @@ defmodule ExperimentTest do
     use Scientist.Experiment
 
     def enabled?, do: false
-    def publish(result) do
-      parent = result.experiment.context[:parent]
-      send(parent, :published)
-    end
+    def publish(_), do: send(self, :published)
   end
 
   test "it does not run when enabled? returns false" do
-    NotEnabledExperiment.new("test")
+    NotEnabledExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.run(result: true)
@@ -214,15 +203,13 @@ defmodule ExperimentTest do
     def enabled?, do: raise "WHOA"
     def publish(_), do: :ok
 
-    def raised(experiment, operation, except) do
-      # Send a message with the exception to the parent process
-      parent = experiment.context[:parent]
-      send(parent, {operation, except})
+    def raised(_experiment, operation, except) do
+      send(self, {operation, except})
     end
   end
 
   test "it reports errors raised in enabled?" do
-    BadEnabledExperiment.new("test", context: %{parent: self})
+    BadEnabledExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.run
@@ -231,7 +218,7 @@ defmodule ExperimentTest do
   end
 
   test "it runs when run_if returns true" do
-    TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_run_if(fn -> true end)
@@ -241,7 +228,7 @@ defmodule ExperimentTest do
   end
 
   test "it does not run when run_if returns false" do
-    TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_run_if(fn -> false end)
@@ -251,7 +238,7 @@ defmodule ExperimentTest do
   end
 
   test "it reports errors raised in run_if" do
-    TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_run_if(fn -> raise "WHOA" end)
@@ -261,7 +248,7 @@ defmodule ExperimentTest do
   end
 
   test "it uses the before_run function when run" do
-    TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_before_run(fn -> send(self, "hi") end)
@@ -271,7 +258,7 @@ defmodule ExperimentTest do
   end
 
   test "it ignores the before_run function when it isn't run" do
-    TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.set_before_run(fn -> send(self, "hi") end)
@@ -280,7 +267,7 @@ defmodule ExperimentTest do
 
     refute_received "hi"
 
-    NotEnabledExperiment.new("test", context: %{parent: self})
+    NotEnabledExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_observable("candidate", fn -> :control end)
     |> Experiment.run
@@ -340,7 +327,7 @@ defmodule ExperimentTest do
   end
 
   test "it reports errors raised in an ignore fn" do
-    TestExperiment.new("test", context: %{parent: self})
+    TestExperiment.new
     |> Experiment.add_control(fn -> 1 end)
     |> Experiment.add_observable("candidate", fn -> 2 end)
     |> Experiment.ignore(fn _, _ -> raise "foo" end)
@@ -350,7 +337,7 @@ defmodule ExperimentTest do
   end
 
   test "it skips ignore blocks that raise an exception" do
-    did_ignore = TestExperiment.new("test", context: %{parent: self})
+    did_ignore = TestExperiment.new
     |> Experiment.add_control(fn -> 1 end)
     |> Experiment.add_observable("candidate", fn -> 2 end)
     |> Experiment.ignore(fn _, _ -> raise "foo" end)
