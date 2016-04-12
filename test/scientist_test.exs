@@ -31,6 +31,7 @@ defmodule ScientistTest do
   test "science runs the experiment when the block ends" do
     value = science "my experiment" do
       control do: 1
+      candidate do: 1
     end
 
     assert value == 1

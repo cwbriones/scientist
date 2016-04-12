@@ -59,6 +59,13 @@ defmodule Scientist.Observation do
   end
 
   @doc """
+  Re-raises or throws the exception that occurred during observation, if any.
+  """
+  def except!(%Scientist.Observation{exception: nil}), do: nil
+  def except!(%Scientist.Observation{exception: {:raised, e}}), do: raise e
+  def except!(%Scientist.Observation{exception: {:thrown, e}}), do: throw e
+
+  @doc """
   Returns true if the observation threw or raised an exception.
   """
   def except?(%Scientist.Observation{exception: nil}), do: false

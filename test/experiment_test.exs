@@ -35,23 +35,38 @@ defmodule ExperimentTest do
       |> Experiment.run
   end
 
+  test "it passes through exceptions in the control" do
+    assert_raise(RuntimeError, fn ->
+      Experiment.new
+      |> Experiment.add_control(fn -> raise "control" end)
+      |> Experiment.run
+    end)
+  end
+
   test "it runs every candidate" do
-    parent = self
     Experiment.new
-      |> Experiment.add_control(fn -> send(parent, 1) end)
-      |> Experiment.add_observable("one", fn -> send(parent, 2) end)
-      |> Experiment.add_observable("two", fn -> send(parent, 3) end)
+      |> Experiment.add_control(fn -> send(self, 1) end)
+      |> Experiment.add_observable("one", fn -> send(self, 2) end)
+      |> Experiment.add_observable("two", fn -> send(self, 3) end)
       |> Experiment.run
     assert_received 1
     assert_received 2
     assert_received 3
   end
 
+  test "it doesn't allow candidates with the same name" do
+    assert_raise(ArgumentError, fn ->
+      Experiment.new
+      |> Experiment.add_control(fn -> 1 end)
+      |> Experiment.add_observable("candidate", fn -> 1 end)
+      |> Experiment.add_observable("candidate", fn -> 1 end)
+    end)
+  end
+
   test "it runs the candidates in arbitrary order" do
-    parent = self
     experiment = Experiment.new
-      |> Experiment.add_control(fn -> send(parent, 1) end)
-      |> Experiment.add_observable("one", fn -> send(parent, 2) end)
+      |> Experiment.add_control(fn -> send(self, 1) end)
+      |> Experiment.add_observable("one", fn -> send(self, 2) end)
 
     Stream.repeatedly(fn -> Experiment.run(experiment) end)
     |> Stream.take(1000)
@@ -159,6 +174,14 @@ defmodule ExperimentTest do
     |> Experiment.run(result: true)
 
     assert_received :published
+  end
+
+  test "it doesn't publish a result when there is only a control" do
+    TestExperiment.new
+    |> Experiment.add_control(fn -> :control end)
+    |> Experiment.run
+
+    refute_received :published
   end
 
   defmodule BadPublishExperiment do

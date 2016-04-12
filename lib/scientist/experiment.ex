@@ -212,12 +212,14 @@ defmodule Scientist.Experiment do
 
       result = Scientist.Result.new(exp, control, candidates)
 
-      guarded exp, :publish, do: exp.module.publish(result)
+      case candidates do
+        [_ | _] -> guarded exp, :publish, do: exp.module.publish(result)
+        [] -> nil
+      end
 
       cond do
         Keyword.get(opts, :result, false) -> result
-        Scientist.Observation.raised?(control) -> raise control.except
-        Scientist.Observation.thrown?(control) -> throw control.except
+        Scientist.Observation.except?(control) -> Scientist.Observation.except!(control)
         true -> control.value
       end
     else
@@ -279,17 +281,23 @@ defmodule Scientist.Experiment do
 
   @doc """
   Adds the given function to the experiment as an observable.
+
+  Raises Argument error if the given experiment already has an observable with `name`.
   """
   def add_observable(exp, name, observable) do
-    new_observables = exp.observables |> Map.put(name, observable)
-    %__MODULE__{exp | observables: new_observables}
+    if Map.has_key?(exp.observables, name) do
+      message = "Experiment \"#{exp.name}\" already has an observable called \"#{name}\""
+      raise ArgumentError, message: message
+    else
+      update_in(exp.observables, &(Map.put(&1, name, observable)))
+    end
   end
 
   @doc """
   Adds a function to the experiment that is used to compare observations.
   """
   def compare_with(exp, c) do
-    %__MODULE__{exp | comparator: c}
+    put_in(exp.comparator, c)
   end
 
   @doc """
@@ -297,27 +305,27 @@ defmodule Scientist.Experiment do
   this function returns true.
   """
   def ignore(exp, i) do
-    %__MODULE__{exp | ignore: [i | exp.ignore]}
+    put_in(exp.ignore, [i | exp.ignore])
   end
 
   @doc """
   Adds a function to the experiment that is used to clean observed values.
   """
   def clean_with(exp, cleaner) do
-    %__MODULE__{exp | clean: cleaner}
+    put_in(exp.clean, cleaner)
   end
 
   @doc """
   Adds a function to the experiment that is used to determine if it should run.
   """
   def set_run_if(exp, run_if_fn) do
-    %__MODULE__{exp | run_if_fn: run_if_fn}
+    put_in(exp.run_if_fn, run_if_fn)
   end
 
   @doc """
   Adds a function to the experiment that should only execute when the experiment is run.
   """
   def set_before_run(exp, before_run) do
-    %__MODULE__{exp | before_run: before_run}
+    put_in(exp.before_run, before_run)
   end
 end
