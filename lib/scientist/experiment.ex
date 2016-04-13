@@ -8,7 +8,7 @@ defmodule Scientist.Experiment do
       result: nil,
       clean: nil,
       ignore: [],
-      comparator: &(&1 == &2),
+      comparator: &Kernel.==/2,
       module: Scientist.Default
     ]
 
@@ -199,7 +199,7 @@ defmodule Scientist.Experiment do
   def run(exp, opts \\ [])
   def run(exp = %Scientist.Experiment{observables: %{"control" => c}}, opts) do
     if should_run?(exp) do
-      is_nil(exp.before_run) or exp.before_run.()
+      !exp.before_run or exp.before_run.()
 
       observations = exp.observables
       |> Enum.shuffle
@@ -266,7 +266,7 @@ defmodule Scientist.Experiment do
   Reports an error to the callback module if an exception is caught.
   """
   def run_if_allows?(experiment = %Scientist.Experiment{run_if_fn: f}) do
-    guarded experiment, :run_if, do: is_nil(f) or f.()
+    guarded experiment, :run_if, do: !f or f.()
   end
 
   @doc """

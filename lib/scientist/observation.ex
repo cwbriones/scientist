@@ -35,11 +35,9 @@ defmodule Scientist.Observation do
       duration = System.system_time(@timeunit) - observation.timestamp
       %Scientist.Observation{observation | value: value, duration: duration, cleaned_value: cleaned}
     rescue
-      except ->
-        %Scientist.Observation{observation | exception: {:raised, except}}
+      except -> put_in observation.exception, {:raised, except}
     catch
-      except ->
-        %Scientist.Observation{observation | exception: {:thrown, except}}
+      except -> put_in observation.exception, {:thrown, except}
     end
   end
 
@@ -48,7 +46,7 @@ defmodule Scientist.Observation do
 
   Defaults to comparing by a direct equality.
   """
-  def equivalent?(observation, other, compare \\ &(&1 == &2)) do
+  def equivalent?(observation, other, compare \\ &Kernel.==/2) do
     case {observation.exception, other.exception} do
       {nil, nil} ->
         compare.(observation.value, other.value)
