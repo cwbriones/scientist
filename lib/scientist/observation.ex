@@ -11,6 +11,7 @@ defmodule Scientist.Observation do
       value: nil,
       cleaned_value: nil,
       exception: nil,
+      stacktrace: nil,
       duration: nil,
     ]
 
@@ -33,11 +34,23 @@ defmodule Scientist.Observation do
         value
       end
       duration = System.system_time(@timeunit) - observation.timestamp
-      %Scientist.Observation{observation | value: value, duration: duration, cleaned_value: cleaned}
+      %__MODULE__{ observation |
+        value: value,
+        duration: duration,
+        cleaned_value: cleaned
+      }
     rescue
-      except -> put_in observation.exception, {:raised, except}
+      except ->
+        %__MODULE__{ observation |
+          exception: {:raised, except},
+          stacktrace: System.stacktrace
+        }
     catch
-      except -> put_in observation.exception, {:thrown, except}
+      except ->
+        %__MODULE__{ observation |
+          exception: {:thrown, except},
+          stacktrace: System.stacktrace
+        }
     end
   end
 
@@ -60,7 +73,7 @@ defmodule Scientist.Observation do
   Re-raises or throws the exception that occurred during observation, if any.
   """
   def except!(%Scientist.Observation{exception: nil}), do: nil
-  def except!(%Scientist.Observation{exception: {:raised, e}}), do: raise e
+  def except!(%Scientist.Observation{exception: {:raised, e}, stacktrace: s}), do: reraise e, s
   def except!(%Scientist.Observation{exception: {:thrown, e}}), do: throw e
 
   @doc """

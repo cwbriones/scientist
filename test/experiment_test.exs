@@ -36,11 +36,28 @@ defmodule ExperimentTest do
   end
 
   test "it passes through exceptions in the control" do
+    ex = Experiment.new
+      |> Experiment.add_control(fn -> raise "control" end)
+
+    assert_raise(RuntimeError, fn ->
+      Experiment.run(ex)
+    end)
+
+    assert_raise(RuntimeError, fn ->
+      Experiment.add_observable(ex, "candidate", fn -> :control end)
+      |> Experiment.run
+    end)
+  end
+
+  test "the exception stacktrace is unchanged in the control" do
     assert_raise(RuntimeError, fn ->
       Experiment.new
       |> Experiment.add_control(fn -> raise "control" end)
+      |> Experiment.add_observable("candidate", fn -> :candidate end)
       |> Experiment.run
     end)
+
+    assert match?([{ExperimentTest, _, _, _} | _], System.stacktrace)
   end
 
   test "it runs every candidate" do
