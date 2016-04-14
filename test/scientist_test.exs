@@ -19,7 +19,7 @@ end
 defmodule ScientistTest do
   use ExUnit.Case
 
-  import TestExperiment
+  use Scientist, experiment: TestExperiment
 
   test "science creates an experiment" do
     exp = science "my experiment", run: false do
