@@ -98,6 +98,11 @@ defmodule Scientist.Experiment do
 
   @doc """
   Runs the experiment, using Scientist.Default as a callback module if none is provided.
+
+  Raises `Scientist.MissingControlError` if the experiment has no control.
+
+  Raises `Scientist.MismatchError` if the experiment has mismatched observations and is
+  configured with `raise_on_mismatched: true`.
   """
   def run(exp, opts \\ [])
   def run(exp = %Scientist.Experiment{observables: %{"control" => c}}, opts) do
@@ -130,7 +135,7 @@ defmodule Scientist.Experiment do
       c.()
     end
   end
-  def run(_, _), do: raise ArgumentError, message: "Experiment must have a control to run"
+  def run(ex, _), do: raise Scientist.MissingControlError, experiment: ex
 
   @doc """
   Returns true if an experiment determines a mismatch should be ignored, based on its
@@ -178,22 +183,21 @@ defmodule Scientist.Experiment do
   @doc """
   Adds the given function to the experiment as the control.
 
-  Raises ArgumentError if the given experiment already has a control.
+  Raises `Scientist.DuplicateError` if the experiment already has a control.
   """
-  def add_control(%Scientist.Experiment{observables: %{"control" => _}}, _) do
-    raise ArgumentError, message: "Experiment can only have a single control"
+  def add_control(ex = %Scientist.Experiment{observables: %{"control" => _}}, _) do
+    raise Scientist.DuplicateError, experiment: ex, name: "control"
   end
   def add_control(exp, observable), do: add_observable(exp, "control", observable)
 
   @doc """
   Adds the given function to the experiment as an observable.
 
-  Raises Argument error if the given experiment already has an observable with `name`.
+  Raises `Scientist.DuplicateError` if the experiment already has an observable with `name`.
   """
   def add_observable(exp, name, observable) do
     if Map.has_key?(exp.observables, name) do
-      message = "Experiment \"#{exp.name}\" already has an observable called \"#{name}\""
-      raise ArgumentError, message: message
+      raise Scientist.DuplicateError, experiment: exp, name: name
     else
       update_in(exp.observables, &(Map.put(&1, name, observable)))
     end

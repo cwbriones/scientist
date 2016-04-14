@@ -16,16 +16,17 @@ defmodule ExperimentTest do
 
   test "it can't be run without a control" do
     experiment = Experiment.new
-    assert_raise(ArgumentError, fn -> Experiment.run(experiment) end)
+    assert_raise(Scientist.MissingControlError, fn ->
+      Experiment.run(experiment)
+    end)
   end
 
   test "it only can have a single control" do
-    fun = fn ->
+    assert_raise(Scientist.DuplicateError, fn ->
       Experiment.new
       |> Experiment.add_control(fn -> :control end)
       |> Experiment.add_control(fn -> :second_control end)
-    end
-    assert_raise(ArgumentError, fun)
+    end)
   end
 
   test "it passes through the control" do
@@ -72,7 +73,7 @@ defmodule ExperimentTest do
   end
 
   test "it doesn't allow candidates with the same name" do
-    assert_raise(ArgumentError, fn ->
+    assert_raise(Scientist.DuplicateError, fn ->
       Experiment.new
       |> Experiment.add_control(fn -> 1 end)
       |> Experiment.add_observable("candidate", fn -> 1 end)
