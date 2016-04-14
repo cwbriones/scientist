@@ -9,13 +9,15 @@ defmodule Scientist.Experiment do
       clean: nil,
       ignore: [],
       comparator: &Kernel.==/2,
+      raise_on_mismatches: false,
       module: Scientist.Default
     ]
 
   @callback enabled?() :: Boolean
   @callback publish(%Scientist.Result{}) :: any
 
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
+    raise_on_mismatches = Keyword.get(opts, :raise_on_mismatches, false)
     quote do
       @behaviour unquote(__MODULE__)
 
@@ -23,10 +25,16 @@ defmodule Scientist.Experiment do
       Creates a new experiment.
       """
       def new(name \\ name, opts \\ []) do
-        custom = Keyword.get(opts, :context, %{})
-        merged_context = default_context |> Map.merge(custom)
-        new_opts = Keyword.put(opts, :context, merged_context)
-        unquote(__MODULE__).new(__MODULE__, name, new_opts)
+        context = Keyword.get(opts, :context, %{})
+        should_raise =
+          Keyword.get(opts, :raise_on_mismatches, unquote(raise_on_mismatches))
+
+        unquote(__MODULE__).new(
+            __MODULE__,
+            name,
+            context: Map.merge(default_context, context),
+            raise_on_mismatches: should_raise
+          )
       end
 
       @doc """
@@ -59,11 +67,12 @@ defmodule Scientist.Experiment do
   """
   def new(name \\ "#{__MODULE__}"), do: new(name, [])
   def new(name, opts), do: new(Scientist.Default, name, opts)
-  def new(module, name, opts) do context = Keyword.get(opts, :context, %{})
+  def new(module, name, opts) do
     %__MODULE__{
       name: name,
-      context: context,
-      module: module
+      context: Keyword.get(opts, :context, %{}),
+      module: module,
+      raise_on_mismatches: Keyword.get(opts, :raise_on_mismatches, false)
     }
   end
 
@@ -106,9 +115,10 @@ defmodule Scientist.Experiment do
 
       result = Scientist.Result.new(exp, control, candidates)
 
-      case candidates do
-        [_ | _] -> guarded exp, :publish, do: exp.module.publish(result)
-        [] -> nil
+      guarded exp, :publish, do: exp.module.publish(result)
+
+      if exp.raise_on_mismatches and Scientist.Result.mismatched?(result) do
+        raise Scientist.MismatchError, result: result
       end
 
       cond do
@@ -151,8 +161,10 @@ defmodule Scientist.Experiment do
   Returns true if the experiment should run, reporting an error to the callback module
   if an exception is caught.
   """
-  def should_run?(experiment = %Scientist.Experiment{module: module}) do
-    guarded experiment, :enabled, do: module.enabled? and run_if_allows?(experiment)
+  def should_run?(experiment = %Scientist.Experiment{observables: obs, module: module}) do
+    guarded experiment, :enabled do
+      Enum.count(obs) > 1 and module.enabled? and run_if_allows?(experiment)
+    end
   end
 
   @doc """

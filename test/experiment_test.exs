@@ -371,4 +371,29 @@ defmodule ExperimentTest do
     assert did_ignore
     assert_received :ignore_two
   end
+
+  defmodule MismatchExperiment do
+    use Scientist.Experiment, raise_on_mismatches: true
+
+    def enabled?, do: true
+    def publish(_), do: :ok
+  end
+
+  test "it raises on mismatches when the module is configured" do
+    assert_raise(Scientist.MismatchError, fn ->
+      MismatchExperiment.new
+      |> Experiment.add_control(fn -> :control end)
+      |> Experiment.add_observable("candidate", fn -> :candidate end)
+      |> Experiment.run
+    end)
+  end
+
+  test "it raises on mismatches when the experiment is configured" do
+    assert_raise(Scientist.MismatchError, fn ->
+      TestExperiment.new("experiment", raise_on_mismatches: true)
+      |> Experiment.add_control(fn -> :control end)
+      |> Experiment.add_observable("candidate", fn -> :candidate end)
+      |> Experiment.run
+    end)
+  end
 end
