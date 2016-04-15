@@ -13,19 +13,19 @@ defmodule Scientist do
   end
 
   @doc """
-  Creates a new experiment with `name` and `opts`, bound to the variable
-  `experiment` within the do block.
+  Creates a new experiment with `name` and `opts`. The block will behave the same as the
+  control block given.
   """
   defmacro science(name, opts \\ [], do: block) do
     should_run = Keyword.get(opts, :run, true)
     exp_opts = Keyword.delete(opts, :run)
     quote do
-      var!(experiment) = @scientist_experiment.new(unquote(name), unquote(exp_opts))
+      var!(ex, Scientist) = @scientist_experiment.new(unquote(name), unquote(exp_opts))
       unquote(block)
       if unquote(should_run) do
-        Scientist.Experiment.run(var!(experiment))
+        Scientist.Experiment.run(var!(ex, Scientist))
       else
-        var!(experiment)
+        var!(ex, Scientist)
       end
     end
   end
@@ -36,7 +36,8 @@ defmodule Scientist do
   defmacro control(do: block) do
     quote do
       c = fn -> unquote(block) end
-      var!(experiment) = Scientist.Experiment.add_control(var!(experiment), c)
+      var!(ex, Scientist) =
+        Scientist.Experiment.add_control(var!(ex, Scientist), c)
     end
   end
 
@@ -46,8 +47,8 @@ defmodule Scientist do
   defmacro candidate(name \\ "candidate", do: block) do
     quote do
       c = fn -> unquote(block) end
-      var!(experiment) =
-        Scientist.Experiment.add_observable(var!(experiment), unquote(name), c)
+      var!(ex, Scientist) =
+        Scientist.Experiment.add_observable(var!(ex, Scientist), unquote(name), c)
     end
   end
 
@@ -57,7 +58,7 @@ defmodule Scientist do
   defmacro ignore(do: block) do
     quote do
       i = fn _, _ -> unquote(block) end
-      var!(experiment) = Scientist.Experiment.ignore(var!(experiment), i)
+      var!(ex, Scientist) = Scientist.Experiment.ignore(var!(ex, Scientist), i)
     end
   end
 
@@ -69,7 +70,7 @@ defmodule Scientist do
   defmacro ignore(x, y, do: block) do
     quote do
       i = fn (unquote(x), unquote(y)) -> unquote(block) end
-      var!(experiment) = Scientist.Experiment.ignore(var!(experiment), i)
+      var!(ex, Scientist) = Scientist.Experiment.ignore(var!(ex, Scientist), i)
     end
   end
 
@@ -81,7 +82,7 @@ defmodule Scientist do
   defmacro compare(x, y, do: block) do
     quote do
       c = fn (unquote(x), unquote(y)) -> unquote(block) end
-      var!(experiment) = Scientist.Experiment.compare_with(var!(experiment), c)
+      var!(ex, Scientist) = Scientist.Experiment.compare_with(var!(ex, Scientist), c)
     end
   end
 
@@ -93,7 +94,7 @@ defmodule Scientist do
   defmacro clean(x, do: block) do
     quote do
       c = fn (unquote(x)) -> unquote(block) end
-      var!(experiment) = Scientist.Experiment.clean_with(var!(experiment), c)
+      var!(ex, Scientist) = Scientist.Experiment.clean_with(var!(ex, Scientist), c)
     end
   end
 
@@ -103,7 +104,7 @@ defmodule Scientist do
   defmacro before_run(do: block) do
     quote do
       b = fn -> unquote(block) end
-      var!(experiment) = Scientist.Experiment.set_before_run(var!(experiment), b)
+      var!(ex, Scientist) = Scientist.Experiment.set_before_run(var!(ex, Scientist), b)
     end
   end
 
@@ -113,7 +114,17 @@ defmodule Scientist do
   defmacro run_if(do: block) do
     quote do
       r = fn -> unquote(block) end
-      var!(experiment) = Scientist.Experiment.set_run_if(var!(experiment), r)
+      var!(ex, Scientist) = Scientist.Experiment.set_run_if(var!(ex, Scientist), r)
+    end
+  end
+end
+
+defmodule Scientist.Test do
+  use Scientist
+
+  def test do
+    science "foo" do
+      control do: 1
     end
   end
 end
