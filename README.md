@@ -312,7 +312,7 @@ If [available in Hex](https://hex.pm/docs/publish), `Scientist` can be installed
 list of dependencies in `mix.exs`:
 ```elixir
   def deps do
-    [{:scientist, "~> 0.1.0"}]
+    [{:scientist_ex, "~> 0.1.0"}]
   end
 ```
 
