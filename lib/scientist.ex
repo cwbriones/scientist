@@ -118,13 +118,3 @@ defmodule Scientist do
     end
   end
 end
-
-defmodule Scientist.Test do
-  use Scientist
-
-  def test do
-    science "foo" do
-      control do: 1
-    end
-  end
-end
