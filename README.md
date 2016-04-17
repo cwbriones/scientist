@@ -1,5 +1,7 @@
 # Scientist
 
+[![Build Status](https://travis-ci.org/cwbriones/scientist.svg?branch=master)](https://travis-ci.org/cwbriones/scientist)
+
 A library for carefully refactoring critical paths in your elixir appplication.
 
 This is an elixir clone of the ruby gem [scientist](https://github.com/github/scientist).
