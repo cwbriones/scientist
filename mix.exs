@@ -10,7 +10,7 @@ defmodule Scientist.Mixfile do
      name: "Scientist",
      source_url: "https://github.com/cwbriones/scientist",
      description: """
-     An elixir library for refactoring critical paths in your application.
+     A library for carefully refactoring critical paths in your elixir application.
      """]
   end
 

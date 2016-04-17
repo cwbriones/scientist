@@ -1,6 +1,6 @@
 defmodule Scientist do
   @moduledoc ~S"""
-  A library for refactoring critical paths in your application.
+  A library for carefully refactoring critical paths in your elixir application.
   """
 
   defmacro __using__(opts) do
