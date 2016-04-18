@@ -1,6 +1,7 @@
 # Scientist
 
 [![Build Status](https://travis-ci.org/cwbriones/scientist.svg?branch=master)](https://travis-ci.org/cwbriones/scientist)
+[![Coverage Status](https://coveralls.io/repos/github/cwbriones/scientist/badge.svg?branch=master)](https://coveralls.io/github/cwbriones/scientist?branch=master)
 
 A library for carefully refactoring critical paths in your elixir appplication.
 

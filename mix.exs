@@ -11,7 +11,12 @@ defmodule Scientist.Mixfile do
      source_url: "https://github.com/cwbriones/scientist",
      description: """
      A library for carefully refactoring critical paths in your elixir application.
-     """]
+     """] ++ test
+  end
+
+  defp test do
+    [test_coverage: [tool: ExCoveralls],
+     preferred_cli_env: [coveralls: :test]]
   end
 
   def application do
@@ -21,7 +26,8 @@ defmodule Scientist.Mixfile do
   defp deps do
     [
       {:ex_doc, "~> 0.11.4", only: :dev},
-      {:earmark, "~> 0.2.1", only: :dev}
+      {:earmark, "~> 0.2.1", only: :dev},
+      {:excoveralls, "~> 0.4", only: :test}
     ]
   end
 
