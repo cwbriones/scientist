@@ -36,7 +36,7 @@ defmodule ExperimentTest do
       |> Experiment.run
   end
 
-  test "it passes through exceptions in the control" do
+  test "it passes through raised exceptions in the control" do
     ex = Experiment.new
       |> Experiment.add_control(fn -> raise "control" end)
 
@@ -59,6 +59,15 @@ defmodule ExperimentTest do
     end)
 
     assert match?([{ExperimentTest, _, _, _} | _], System.stacktrace)
+  end
+
+  test "it passes through thrown exceptions in the control" do
+    catch_throw (
+      Experiment.new
+      |> Experiment.add_control(fn -> throw "control" end)
+      |> Experiment.add_observable("candidate", fn -> :control end)
+      |> Experiment.run
+    )
   end
 
   test "it runs every candidate" do
