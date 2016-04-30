@@ -5,28 +5,28 @@ defmodule ObservationTest do
   alias Scientist.Observation
 
   test "it runs and records execution" do
-    observable = fn ->
+    candidate = fn ->
       :timer.sleep(100)
       :control
     end
     experiment = Experiment.new("test")
-    observation = Observation.new(experiment, "control", observable)
+    observation = Observation.new(experiment, "control", candidate)
     assert_in_delta 100, observation.duration, 10
   end
 
   test "it swallows exceptions" do
-    observable = fn -> raise "foo" end
+    candidate = fn -> raise "foo" end
     experiment = Experiment.new("test")
-    observation = Observation.new(experiment, "control", observable)
+    observation = Observation.new(experiment, "control", candidate)
 
     assert Observation.raised?(observation)
     assert Observation.except?(observation)
   end
 
   test "it swallows throws" do
-    observable = fn -> throw "foo" end
+    candidate = fn -> throw "foo" end
     experiment = Experiment.new("test")
-    observation = Observation.new(experiment, "control", observable)
+    observation = Observation.new(experiment, "control", candidate)
 
     assert Observation.thrown?(observation)
     assert Observation.except?(observation)

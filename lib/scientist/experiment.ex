@@ -1,7 +1,7 @@
 defmodule Scientist.Experiment do
   defstruct [
       name: "#{__MODULE__}",
-      observables: %{},
+      candidates: %{},
       context: %{},
       run_if_fn: nil,
       before_run: nil,
@@ -105,13 +105,13 @@ defmodule Scientist.Experiment do
   configured with `raise_on_mismatched: true`.
   """
   def run(exp, opts \\ [])
-  def run(exp = %Scientist.Experiment{observables: %{"control" => c}}, opts) do
+  def run(exp = %Scientist.Experiment{candidates: %{"control" => c}}, opts) do
     if should_run?(exp) do
       !exp.before_run or exp.before_run.()
 
-      observations = exp.observables
+      observations = exp.candidates
       |> Enum.shuffle
-      |> Enum.map(&(eval_observable(exp, &1)))
+      |> Enum.map(&(eval_candidate(exp, &1)))
       |> Enum.to_list
 
       {[control], candidates} = Enum.partition(observations, fn o ->
@@ -148,8 +148,8 @@ defmodule Scientist.Experiment do
     end)
   end
 
-  defp eval_observable(experiment, {name, observable}) do
-    Scientist.Observation.new(experiment, name, observable)
+  defp eval_candidate(experiment, {name, candidate}) do
+    Scientist.Observation.new(experiment, name, candidate)
   end
 
   @doc """
@@ -166,7 +166,7 @@ defmodule Scientist.Experiment do
   Returns true if the experiment should run, reporting an error to the callback module
   if an exception is caught.
   """
-  def should_run?(experiment = %Scientist.Experiment{observables: obs, module: module}) do
+  def should_run?(experiment = %Scientist.Experiment{candidates: obs, module: module}) do
     guarded experiment, :enabled do
       Enum.count(obs) > 1 and module.enabled? and run_if_allows?(experiment)
     end
@@ -185,21 +185,21 @@ defmodule Scientist.Experiment do
 
   Raises `Scientist.DuplicateError` if the experiment already has a control.
   """
-  def add_control(ex = %Scientist.Experiment{observables: %{"control" => _}}, _) do
+  def add_control(ex = %Scientist.Experiment{candidates: %{"control" => _}}, _) do
     raise Scientist.DuplicateError, experiment: ex, name: "control"
   end
-  def add_control(exp, observable), do: add_observable(exp, "control", observable)
+  def add_control(exp, candidate), do: add_candidate(exp, "control", candidate)
 
   @doc """
-  Adds the given function to the experiment as an observable.
+  Adds the given function to the experiment as an candidate.
 
-  Raises `Scientist.DuplicateError` if the experiment already has an observable with `name`.
+  Raises `Scientist.DuplicateError` if the experiment already has a candidate with `name`.
   """
-  def add_observable(exp, name, observable) do
-    if Map.has_key?(exp.observables, name) do
+  def add_candidate(exp, name \\ "candidate", candidate) do
+    if Map.has_key?(exp.candidates, name) do
       raise Scientist.DuplicateError, experiment: exp, name: name
     else
-      update_in(exp.observables, &(Map.put(&1, name, observable)))
+      update_in(exp.candidates, &(Map.put(&1, name, candidate)))
     end
   end
 

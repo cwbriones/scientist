@@ -48,7 +48,7 @@ defmodule Scientist do
     quote do
       c = fn -> unquote(block) end
       var!(ex, Scientist) =
-        Scientist.Experiment.add_observable(var!(ex, Scientist), unquote(name), c)
+        Scientist.Experiment.add_candidate(var!(ex, Scientist), unquote(name), c)
     end
   end
 

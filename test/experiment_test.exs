@@ -45,7 +45,7 @@ defmodule ExperimentTest do
     end)
 
     assert_raise(RuntimeError, fn ->
-      Experiment.add_observable(ex, "candidate", fn -> :control end)
+      Experiment.add_candidate(ex, fn -> :control end)
       |> Experiment.run
     end)
   end
@@ -54,7 +54,7 @@ defmodule ExperimentTest do
     assert_raise(RuntimeError, fn ->
       Experiment.new
       |> Experiment.add_control(fn -> raise "control" end)
-      |> Experiment.add_observable("candidate", fn -> :candidate end)
+      |> Experiment.add_candidate(fn -> :candidate end)
       |> Experiment.run
     end)
 
@@ -65,7 +65,7 @@ defmodule ExperimentTest do
     catch_throw (
       Experiment.new
       |> Experiment.add_control(fn -> throw "control" end)
-      |> Experiment.add_observable("candidate", fn -> :control end)
+      |> Experiment.add_candidate(fn -> :control end)
       |> Experiment.run
     )
   end
@@ -73,8 +73,8 @@ defmodule ExperimentTest do
   test "it runs every candidate" do
     Experiment.new
       |> Experiment.add_control(fn -> send(self, 1) end)
-      |> Experiment.add_observable("one", fn -> send(self, 2) end)
-      |> Experiment.add_observable("two", fn -> send(self, 3) end)
+      |> Experiment.add_candidate("one", fn -> send(self, 2) end)
+      |> Experiment.add_candidate("two", fn -> send(self, 3) end)
       |> Experiment.run
     assert_received 1
     assert_received 2
@@ -85,15 +85,15 @@ defmodule ExperimentTest do
     assert_raise(Scientist.DuplicateError, fn ->
       Experiment.new
       |> Experiment.add_control(fn -> 1 end)
-      |> Experiment.add_observable("candidate", fn -> 1 end)
-      |> Experiment.add_observable("candidate", fn -> 1 end)
+      |> Experiment.add_candidate(fn -> 1 end)
+      |> Experiment.add_candidate(fn -> 1 end)
     end)
   end
 
   test "it runs the candidates in arbitrary order" do
     experiment = Experiment.new
       |> Experiment.add_control(fn -> send(self, 1) end)
-      |> Experiment.add_observable("one", fn -> send(self, 2) end)
+      |> Experiment.add_candidate("one", fn -> send(self, 2) end)
 
     Stream.repeatedly(fn -> Experiment.run(experiment) end)
     |> Stream.take(1000)
@@ -107,7 +107,7 @@ defmodule ExperimentTest do
   test "it compares results" do
     matched = Experiment.new
     |> Experiment.add_control(fn -> 1 end)
-    |> Experiment.add_observable("candidate", fn -> 1 end)
+    |> Experiment.add_candidate(fn -> 1 end)
     |> Experiment.run(result: true)
     |> Scientist.Result.matched?
 
@@ -117,7 +117,7 @@ defmodule ExperimentTest do
   test "it compares with the comparator provided" do
     matched = Experiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> "control" end)
+    |> Experiment.add_candidate(fn -> "control" end)
     |> Experiment.compare_with(fn(co, ca) -> Atom.to_string(co) == ca end)
     |> Experiment.run(result: true)
     |> Scientist.Result.matched?
@@ -161,7 +161,7 @@ defmodule ExperimentTest do
   test "it reports errors raised during compare" do
     experiment = TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
 
     experiment
     |> Experiment.compare_with(fn _, _ -> raise "SCARY ERROR" end)
@@ -179,7 +179,7 @@ defmodule ExperimentTest do
   test "it reports errors raised during clean" do
     experiment = TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
 
     experiment
     |> Experiment.clean_with(fn _ -> raise "YOU GOT SPOOKED" end)
@@ -197,7 +197,7 @@ defmodule ExperimentTest do
   test "it uses the publish function during run" do
     TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.run(result: true)
 
     assert_received :published
@@ -225,7 +225,7 @@ defmodule ExperimentTest do
   test "it reports errors raised during publish" do
     BadPublishExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.run(result: true)
 
     assert_received {:publish, %RuntimeError{message: "ka-BOOM"}}
@@ -241,7 +241,7 @@ defmodule ExperimentTest do
   test "it does not run when enabled? returns false" do
     NotEnabledExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.run(result: true)
 
     refute_received :published
@@ -261,7 +261,7 @@ defmodule ExperimentTest do
   test "it reports errors raised in enabled?" do
     BadEnabledExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.run
 
     assert_received {:enabled, %RuntimeError{message: "WHOA"}}
@@ -270,7 +270,7 @@ defmodule ExperimentTest do
   test "it runs when run_if returns true" do
     TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.set_run_if(fn -> true end)
     |> Experiment.run
 
@@ -280,7 +280,7 @@ defmodule ExperimentTest do
   test "it does not run when run_if returns false" do
     TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.set_run_if(fn -> false end)
     |> Experiment.run
 
@@ -290,7 +290,7 @@ defmodule ExperimentTest do
   test "it reports errors raised in run_if" do
     TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.set_run_if(fn -> raise "WHOA" end)
     |> Experiment.run
 
@@ -300,7 +300,7 @@ defmodule ExperimentTest do
   test "it uses the before_run function when run" do
     TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.set_before_run(fn -> send(self, "hi") end)
     |> Experiment.run
 
@@ -310,7 +310,7 @@ defmodule ExperimentTest do
   test "it ignores the before_run function when it isn't run" do
     TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.set_before_run(fn -> send(self, "hi") end)
     |> Experiment.set_run_if(fn -> false end)
     |> Experiment.run
@@ -319,7 +319,7 @@ defmodule ExperimentTest do
 
     NotEnabledExperiment.new
     |> Experiment.add_control(fn -> :control end)
-    |> Experiment.add_observable("candidate", fn -> :control end)
+    |> Experiment.add_candidate(fn -> :control end)
     |> Experiment.run
 
     refute_received "hi"
@@ -345,7 +345,7 @@ defmodule ExperimentTest do
   test "it only calls its ignore functions if there is a mismatch" do
     Experiment.new
     |> Experiment.add_control(fn -> 1 end)
-    |> Experiment.add_observable("candidate", fn -> 1 end)
+    |> Experiment.add_candidate(fn -> 1 end)
     |> Experiment.ignore(fn _, _ -> send(self, :ignore); false end)
     |> Experiment.run
 
@@ -355,7 +355,7 @@ defmodule ExperimentTest do
   test "it attempts every ignore function passed in" do
     Experiment.new
     |> Experiment.add_control(fn -> 1 end)
-    |> Experiment.add_observable("candidate", fn -> 2 end)
+    |> Experiment.add_candidate(fn -> 2 end)
     |> Experiment.ignore(fn _, _ -> send(self, :ignore_one); false end)
     |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); false end)
     |> Experiment.run
@@ -367,7 +367,7 @@ defmodule ExperimentTest do
   test "it only attempts until a single ignore function returns true" do
     Experiment.new
     |> Experiment.add_control(fn -> 1 end)
-    |> Experiment.add_observable("candidate", fn -> 2 end)
+    |> Experiment.add_candidate(fn -> 2 end)
     |> Experiment.ignore(fn _, _ -> send(self, :ignore_one); true end)
     |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); false end)
     |> Experiment.run
@@ -379,7 +379,7 @@ defmodule ExperimentTest do
   test "it reports errors raised in an ignore fn" do
     TestExperiment.new
     |> Experiment.add_control(fn -> 1 end)
-    |> Experiment.add_observable("candidate", fn -> 2 end)
+    |> Experiment.add_candidate(fn -> 2 end)
     |> Experiment.ignore(fn _, _ -> raise "foo" end)
     |> Experiment.run
 
@@ -389,7 +389,7 @@ defmodule ExperimentTest do
   test "it skips ignore blocks that raise an exception" do
     did_ignore = TestExperiment.new
     |> Experiment.add_control(fn -> 1 end)
-    |> Experiment.add_observable("candidate", fn -> 2 end)
+    |> Experiment.add_candidate(fn -> 2 end)
     |> Experiment.ignore(fn _, _ -> raise "foo" end)
     |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); true end)
     |> Experiment.run(result: true)
@@ -410,7 +410,7 @@ defmodule ExperimentTest do
     assert_raise(Scientist.MismatchError, fn ->
       MismatchExperiment.new
       |> Experiment.add_control(fn -> :control end)
-      |> Experiment.add_observable("candidate", fn -> :candidate end)
+      |> Experiment.add_candidate(fn -> :candidate end)
       |> Experiment.run
     end)
   end
@@ -419,7 +419,7 @@ defmodule ExperimentTest do
     assert_raise(Scientist.MismatchError, fn ->
       TestExperiment.new("experiment", raise_on_mismatches: true)
       |> Experiment.add_control(fn -> :control end)
-      |> Experiment.add_observable("candidate", fn -> :candidate end)
+      |> Experiment.add_candidate(fn -> :candidate end)
       |> Experiment.run
     end)
   end
