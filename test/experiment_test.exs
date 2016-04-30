@@ -128,7 +128,7 @@ defmodule ExperimentTest do
   defmodule TestExperiment do
     use Scientist.Experiment
 
-    def name, do: "My awesome experiment"
+    def default_name, do: "My awesome experiment"
 
     def default_context, do: %{foo: :foo}
 

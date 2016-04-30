@@ -24,7 +24,7 @@ defmodule Scientist.Experiment do
       @doc """
       Creates a new experiment.
       """
-      def new(name \\ name, opts \\ []) do
+      def new(name \\ default_name, opts \\ []) do
         context = Keyword.get(opts, :context, %{})
         should_raise =
           Keyword.get(opts, :raise_on_mismatches, unquote(raise_on_mismatches))
@@ -45,7 +45,7 @@ defmodule Scientist.Experiment do
       @doc """
       Returns the default name for an experiment.
       """
-      def name, do: "#{__MODULE__}"
+      def default_name, do: "#{__MODULE__}"
 
       @doc """
       Called when an experiment run raises an error during an operation.
@@ -57,7 +57,7 @@ defmodule Scientist.Experiment do
       """
       def thrown(_experiment, _operation, except), do: throw except
 
-      defoverridable [ default_context: 0, name: 0, raised: 3, thrown: 3 ]
+      defoverridable [ default_context: 0, default_name: 0, raised: 3, thrown: 3 ]
     end
   end
 

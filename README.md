@@ -58,7 +58,7 @@ defmodule MyCustomExperiment do
 
   # Optional callbacks
   # Default name
-  def name, do: "My custom experiment"
+  def default_name, do: "My custom experiment"
   # Default context, see "Need some context?" below
   def default_context, do: %{}
 end
@@ -101,7 +101,7 @@ In these cases, you can pass a map of values to your experiment before it's run:
 ```elixir
 def get_user(id) do
   # Perhaps the cache is filling too quickly
-  c = %{cache_size => MyETSCache.size(User)}
+  c = %{cache_size: MyETSCache.size(User)}
   science "New ETS cache for users", context: c, do
     control do: Repo.get(User, id)
     candidate do: MyETSCache.get(User, id)
@@ -274,8 +274,8 @@ def get_user(id) do
   context = %{cache_size: MyETSCache.size(User)}
 
   MyCustomExperiment.new("New ETS cache for users", context: context)
-  |> set_control(fn -> Repo.get(User, id) end)
-  |> set_observable("candidate", fn -> MyETSCache.get(User, id) end)
+  |> add_control(fn -> Repo.get(User, id) end)
+  |> add_candidate(fn -> MyETSCache.get(User, id) end)
   |> clean_with(fn %{status: status} -> status end)
   |> run
 end
