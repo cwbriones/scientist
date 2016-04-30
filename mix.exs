@@ -2,7 +2,7 @@ defmodule Scientist.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :scientist_ex,
+    [app: :scientist,
      version: "0.1.0",
      elixir: "~> 1.2",
      deps: deps,
