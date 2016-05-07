@@ -1,7 +1,15 @@
 defmodule Scientist.Observation do
+  @moduledoc """
+  A set of functions for working with experiment observations.
+
+  A `Scientist.Observation` struct contains information about the execution of a
+  given candidate, including its execution duration, value, and cleaned value.
+
+  The timestamp is recorded as the system time, and along with the duration, is
+  reported in milliseconds.
+  """
   @timeunit :milli_seconds
 
-  require Scientist.Experiment
   import  Scientist.Experiment, only: [guarded: 3]
 
   defstruct [
@@ -16,18 +24,19 @@ defmodule Scientist.Observation do
     ]
 
   @doc """
-  Creates a new observation for the experiment.
+  Creates a new observation for `experiment`.
 
-  Evaluates observable, capturing any exceptions raised.
+  Evaluates `candidate`, capturing any exceptions raised. The observation will
+  be cleaned using the experiment's configured clean function.
   """
-  def new(experiment, name, observable) do
+  def new(experiment, name, candidate) do
     observation = %Scientist.Observation{
       name: name,
       experiment: experiment,
       timestamp: System.system_time(@timeunit),
     }
     try do
-      value = observable.()
+      value = candidate.()
       cleaned = if experiment.clean do
         guarded experiment, :clean, do: experiment.clean.(value)
       else
@@ -55,9 +64,10 @@ defmodule Scientist.Observation do
   end
 
   @doc """
-  Returns true if the observations match with the compare function.
+  Returns true if the observations match.
 
-  Defaults to comparing by a direct equality.
+  The observations will be compared using the experiment's configured
+  compare function.
   """
   def equivalent?(observation, other, compare \\ &Kernel.==/2) do
     case {observation.exception, other.exception} do
@@ -72,6 +82,7 @@ defmodule Scientist.Observation do
   @doc """
   Re-raises or throws the exception that occurred during observation, if any.
   """
+  def except!(observation)
   def except!(%Scientist.Observation{exception: nil}), do: nil
   def except!(%Scientist.Observation{exception: {:raised, e}, stacktrace: s}), do: reraise e, s
   def except!(%Scientist.Observation{exception: {:thrown, e}}), do: throw e
@@ -79,18 +90,21 @@ defmodule Scientist.Observation do
   @doc """
   Returns true if the observation threw or raised an exception.
   """
+  def except?(observation)
   def except?(%Scientist.Observation{exception: nil}), do: false
   def except?(_), do: true
 
   @doc """
   Returns true if the observation raised an exception.
   """
+  def raised?(observation)
   def raised?(%Scientist.Observation{exception: {:raised, _}}), do: true
   def raised?(_), do: false
 
   @doc """
   Returns true if the observation threw an exception.
   """
+  def thrown?(observation)
   def thrown?(%Scientist.Observation{exception: {:thrown, _}}), do: true
   def thrown?(_), do: false
 end

@@ -1,7 +1,7 @@
 defmodule Scientist.MismatchError do
   @moduledoc """
-  Raised at runtime when a mismatch occurs for an experiment configured to
-  raise on mismatches.
+  Raised at runtime when a mismatch occurs, if an experiment is configured with
+  `raise_on_mismatches: true`.
   """
   defexception [:message, :result]
 

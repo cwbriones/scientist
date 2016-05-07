@@ -13,8 +13,14 @@ defmodule Scientist do
   end
 
   @doc """
-  Creates a new experiment with `name` and `opts`. The block will behave the same as the
-  control block given.
+  Creates a new experiment.
+
+  Creates an experiment with `name` and `opts`. The block will behave the same as the
+  control block given, returning the same value and raising the same exceptions.
+
+  The stacktrace of the raised exceptions will be preserved.
+
+  See `Scientist.Experiment.new/2` for a list of available options.
   """
   defmacro science(name, opts \\ [], do: block) do
     should_run = Keyword.get(opts, :run, true)
@@ -32,6 +38,8 @@ defmodule Scientist do
 
   @doc """
   Adds a control block to the experiment created in `science/3`.
+
+  See `Scientist.Experiment.add_control/2`.
   """
   defmacro control(do: block) do
     quote do
@@ -43,6 +51,8 @@ defmodule Scientist do
 
   @doc """
   Adds a candidate block to the experiment created in `science/3`.
+
+  See `Scientist.Experiment.add_candidate/2`.
   """
   defmacro candidate(name \\ "candidate", do: block) do
     quote do
@@ -54,6 +64,8 @@ defmodule Scientist do
 
   @doc """
   Adds an ignore block to the experiment created in `science/3`.
+
+  See `Scientist.Experiment.ignore/2`.
   """
   defmacro ignore(do: block) do
     quote do
@@ -65,7 +77,9 @@ defmodule Scientist do
   @doc """
   Adds an ignore block to the experiment created in `science/3`.
 
-  The control and candidate values will be bound to the declared vars.
+  The control and candidate values will be bound to the declared parameters in order.
+
+  See `Scientist.Experiment.ignore/2`.
   """
   defmacro ignore(x, y, do: block) do
     quote do
@@ -77,7 +91,9 @@ defmodule Scientist do
   @doc """
   Adds a compare block to the experiment created in `science/3`.
 
-  The control and candidate values will be bound to the declared vars.
+  The control and candidate values will be bound to the declared parameters in order.
+
+  See `Scientist.Experiment.compare_with/2`.
   """
   defmacro compare(x, y, do: block) do
     quote do
@@ -89,7 +105,9 @@ defmodule Scientist do
   @doc """
   Adds a clean function to the experiment created in `science/3`.
 
-  The observed values will be bound to the declared var.
+  The observed values will be bound to the parameter given.
+
+  See `Scientist.Experiment.clean_with/2`.
   """
   defmacro clean(x, do: block) do
     quote do
@@ -100,6 +118,8 @@ defmodule Scientist do
 
   @doc """
   Adds a before_run function to the experiment created in `science/3`.
+
+  See `Scientist.Experiment.set_before_run/2`.
   """
   defmacro before_run(do: block) do
     quote do
@@ -110,6 +130,8 @@ defmodule Scientist do
 
   @doc """
   Adds a run_if function to the experiment created in `science/3`.
+
+  See `Scientist.Experiment.set_run_if/2`.
   """
   defmacro run_if(do: block) do
     quote do

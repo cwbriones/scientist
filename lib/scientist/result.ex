@@ -1,4 +1,11 @@
 defmodule Scientist.Result do
+  @moduledoc """
+  A set of functions for working with experiment results.
+
+  A `Scientist.Result` struct contains all observations from running an
+  experiment, as well as information about whether observations were mismatched or
+  ignored.
+  """
   defstruct [
       experiment: nil,
       candidates: [],
@@ -11,7 +18,7 @@ defmodule Scientist.Result do
   alias Scientist.Experiment
 
   @doc """
-  Creates a new Result from experiment, control, and observations.
+  Creates a new result.
   """
   def new(ex, control, candidates) do
     {ignored, mismatched} = evaluate_candidates(ex, control, candidates)
@@ -26,8 +33,9 @@ defmodule Scientist.Result do
   end
 
   @doc """
-  Returns true if all observations matched the control, excluding ignored
-  mismatches.
+  Returns true if all observations matched the control.
+
+  Ignored mismatches are excluded.
   """
   def matched?(result), do: not (mismatched?(result) or ignored?(result))
 
@@ -38,8 +46,9 @@ defmodule Scientist.Result do
   def ignored?(%Result{}), do: true
 
   @doc """
-  Returns true if any observations failed to match the control, excluding
-  ignored mismatches.
+  Returns true if any observations failed to match the control.
+
+  Ignored mismatches are excluded.
   """
   def mismatched?(%Result{mismatched: []}), do: false
   def mismatched?(%Result{}), do: true
