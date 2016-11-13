@@ -9,8 +9,7 @@ This is an elixir clone of the ruby gem [scientist](https://github.com/github/sc
 
 ## Wait, why be a Scientist?
 
-Suppose you decide to add a new caching layer to your production application, while still being able to make the same guarantees about your data. By processing your new
-caching strategy though Scientist you'll be able to
+Suppose you decide to add a new caching layer to your production application, while still being able to make the same guarantees about your data. By processing your new caching strategy through Scientist you'll be able to
 
 * Run both the old and the new code in random order
 * Monitor timing for each strategy
@@ -86,7 +85,7 @@ def get_user(id) do
     control do: Repo.get(User, id)
     candidate do: MyETSCache.get(User, id)
 
-    # We only care if the user status is updated.
+    # We only care if the user's status is updated.
     compare(%{status: sa}, %{status: sb}) do
       sa == sb
     end
@@ -135,7 +134,7 @@ Both `value` and `cleaned_value` will be later available in your observations.
 In some cases you know ahead of time that your experiment will mismatch. You could be replicating
 your data to a new store in pieces, or moving to a cache with less recency.
 
-Fortunately, `Scientist` allows you specify these situations and ignore mismatches outright when they occur.
+Fortunately, `Scientist` allows you to specify these situations and ignore mismatches outright when they occur.
 
 ```elixir
 def get_user(id) do
@@ -311,11 +310,11 @@ compare blocks that are always true: `compare(_, _) do: true`
 
 # Installation
 
-If [available in Hex](https://hex.pm/docs/publish), `Scientist` can be installed by adding to your
+Scientist is available on [Hex](https://hex.pm/packages/scientist). It can be installed by adding it to your
 list of dependencies in `mix.exs`:
 ```elixir
   def deps do
-    [{:scientist, "~> 0.1.0"}]
+    [{:scientist, "~> 0.2.0"}]
   end
 ```
 
