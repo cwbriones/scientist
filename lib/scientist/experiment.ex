@@ -171,7 +171,7 @@ defmodule Scientist.Experiment do
       |> Enum.map(&(eval_candidate(exp, &1)))
       |> Enum.to_list
 
-      {[control], candidates} = Enum.partition(observations, fn o ->
+      {[control], candidates} = Enum.split_with(observations, fn o ->
         o.name == "control"
       end)
 
