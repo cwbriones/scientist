@@ -69,7 +69,7 @@ defmodule Scientist.Experiment do
       @doc """
       Creates a new experiment.
       """
-      def new(name \\ default_name, opts \\ []) do
+      def new(name \\ default_name(), opts \\ []) do
         context = Keyword.get(opts, :context, %{})
         should_raise =
           Keyword.get(opts, :raise_on_mismatches, unquote(raise_on_mismatches))
@@ -77,7 +77,7 @@ defmodule Scientist.Experiment do
         unquote(__MODULE__).new(
             name,
             module: __MODULE__,
-            context: Map.merge(default_context, context),
+            context: Map.merge(default_context(), context),
             raise_on_mismatches: should_raise
           )
       end
@@ -138,13 +138,13 @@ defmodule Scientist.Experiment do
     quote do
       try do
         unquote(block)
-      catch
-        except ->
-          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
-          nil
       rescue
         except ->
           unquote(exp).module.raised(unquote(exp), unquote(operation), except)
+          nil
+      catch
+        except ->
+          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
           nil
       end
     end
@@ -171,7 +171,7 @@ defmodule Scientist.Experiment do
       |> Enum.map(&(eval_candidate(exp, &1)))
       |> Enum.to_list
 
-      {[control], candidates} = Enum.partition(observations, fn o ->
+      {[control], candidates} = Enum.split_with(observations, fn o ->
         o.name == "control"
       end)
 

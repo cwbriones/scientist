@@ -72,9 +72,9 @@ defmodule ExperimentTest do
 
   test "it runs every candidate" do
     Experiment.new
-      |> Experiment.add_control(fn -> send(self, 1) end)
-      |> Experiment.add_candidate("one", fn -> send(self, 2) end)
-      |> Experiment.add_candidate("two", fn -> send(self, 3) end)
+      |> Experiment.add_control(fn -> send(self(), 1) end)
+      |> Experiment.add_candidate("one", fn -> send(self(), 2) end)
+      |> Experiment.add_candidate("two", fn -> send(self(), 3) end)
       |> Experiment.run
     assert_received 1
     assert_received 2
@@ -92,13 +92,13 @@ defmodule ExperimentTest do
 
   test "it runs the candidates in arbitrary order" do
     experiment = Experiment.new
-      |> Experiment.add_control(fn -> send(self, 1) end)
-      |> Experiment.add_candidate("one", fn -> send(self, 2) end)
+      |> Experiment.add_control(fn -> send(self(), 1) end)
+      |> Experiment.add_candidate("one", fn -> send(self(), 2) end)
 
     Stream.repeatedly(fn -> Experiment.run(experiment) end)
     |> Stream.take(1000)
     |> Enum.to_list
-    {_, messages} = Process.info(self, :messages)
+    {_, messages} = Process.info(self(), :messages)
 
     unique = Enum.chunk(messages, 2) |> Enum.uniq |> Enum.count
     assert unique == 2
@@ -133,14 +133,14 @@ defmodule ExperimentTest do
     def default_context, do: %{foo: :foo}
 
     def enabled?, do: true
-    def publish(_), do: send(self, :published)
+    def publish(_), do: send(self(), :published)
 
     def raised(_experiment, operation, except) do
-      send(self, {operation, except})
+      send(self(), {operation, except})
     end
 
     def thrown(_experiment, operation, except) do
-      send(self, {:thrown, operation, except})
+      send(self(), {:thrown, operation, except})
     end
   end
 
@@ -218,7 +218,7 @@ defmodule ExperimentTest do
     def publish(_), do: raise "ka-BOOM"
 
     def raised(_experiment, operation, except) do
-      send(self, {operation, except})
+      send(self(), {operation, except})
     end
   end
 
@@ -235,7 +235,7 @@ defmodule ExperimentTest do
     use Scientist.Experiment
 
     def enabled?, do: false
-    def publish(_), do: send(self, :published)
+    def publish(_), do: send(self(), :published)
   end
 
   test "it does not run when enabled? returns false" do
@@ -254,7 +254,7 @@ defmodule ExperimentTest do
     def publish(_), do: :ok
 
     def raised(_experiment, operation, except) do
-      send(self, {operation, except})
+      send(self(), {operation, except})
     end
   end
 
@@ -301,7 +301,7 @@ defmodule ExperimentTest do
     TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_candidate(fn -> :control end)
-    |> Experiment.set_before_run(fn -> send(self, "hi") end)
+    |> Experiment.set_before_run(fn -> send(self(), "hi") end)
     |> Experiment.run
 
     assert_received "hi"
@@ -311,7 +311,7 @@ defmodule ExperimentTest do
     TestExperiment.new
     |> Experiment.add_control(fn -> :control end)
     |> Experiment.add_candidate(fn -> :control end)
-    |> Experiment.set_before_run(fn -> send(self, "hi") end)
+    |> Experiment.set_before_run(fn -> send(self(), "hi") end)
     |> Experiment.set_run_if(fn -> false end)
     |> Experiment.run
 
@@ -346,7 +346,7 @@ defmodule ExperimentTest do
     Experiment.new
     |> Experiment.add_control(fn -> 1 end)
     |> Experiment.add_candidate(fn -> 1 end)
-    |> Experiment.ignore(fn _, _ -> send(self, :ignore); false end)
+    |> Experiment.ignore(fn _, _ -> send(self(), :ignore); false end)
     |> Experiment.run
 
     refute_received :ignore
@@ -356,8 +356,8 @@ defmodule ExperimentTest do
     Experiment.new
     |> Experiment.add_control(fn -> 1 end)
     |> Experiment.add_candidate(fn -> 2 end)
-    |> Experiment.ignore(fn _, _ -> send(self, :ignore_one); false end)
-    |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); false end)
+    |> Experiment.ignore(fn _, _ -> send(self(), :ignore_one); false end)
+    |> Experiment.ignore(fn _, _ -> send(self(), :ignore_two); false end)
     |> Experiment.run
 
     assert_received :ignore_one
@@ -368,8 +368,8 @@ defmodule ExperimentTest do
     Experiment.new
     |> Experiment.add_control(fn -> 1 end)
     |> Experiment.add_candidate(fn -> 2 end)
-    |> Experiment.ignore(fn _, _ -> send(self, :ignore_one); true end)
-    |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); false end)
+    |> Experiment.ignore(fn _, _ -> send(self(), :ignore_one); true end)
+    |> Experiment.ignore(fn _, _ -> send(self(), :ignore_two); false end)
     |> Experiment.run
 
     assert_received :ignore_one
@@ -391,7 +391,7 @@ defmodule ExperimentTest do
     |> Experiment.add_control(fn -> 1 end)
     |> Experiment.add_candidate(fn -> 2 end)
     |> Experiment.ignore(fn _, _ -> raise "foo" end)
-    |> Experiment.ignore(fn _, _ -> send(self, :ignore_two); true end)
+    |> Experiment.ignore(fn _, _ -> send(self(), :ignore_two); true end)
     |> Experiment.run(result: true)
     |> Result.ignored?
 
