@@ -138,13 +138,13 @@ defmodule Scientist.Experiment do
     quote do
       try do
         unquote(block)
-      catch
-        except ->
-          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
-          nil
       rescue
         except ->
           unquote(exp).module.raised(unquote(exp), unquote(operation), except)
+          nil
+      catch
+        except ->
+          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
           nil
       end
     end
