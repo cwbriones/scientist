@@ -69,7 +69,7 @@ defmodule Scientist.Experiment do
       @doc """
       Creates a new experiment.
       """
-      def new(name \\ default_name, opts \\ []) do
+      def new(name \\ default_name(), opts \\ []) do
         context = Keyword.get(opts, :context, %{})
         should_raise =
           Keyword.get(opts, :raise_on_mismatches, unquote(raise_on_mismatches))
@@ -77,7 +77,7 @@ defmodule Scientist.Experiment do
         unquote(__MODULE__).new(
             name,
             module: __MODULE__,
-            context: Map.merge(default_context, context),
+            context: Map.merge(default_context(), context),
             raise_on_mismatches: should_raise
           )
       end
