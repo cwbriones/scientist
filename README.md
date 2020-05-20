@@ -314,7 +314,7 @@ Scientist is available on [Hex](https://hex.pm/packages/scientist). It can be in
 list of dependencies in `mix.exs`:
 ```elixir
   def deps do
-    [{:scientist, "~> 0.2.0"}]
+    [{:scientist, "~> 0.2.1"}]
   end
 ```
 

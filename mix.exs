@@ -4,7 +4,7 @@ defmodule Scientist.Mixfile do
   def project do
     [
       app: :scientist,
-      version: "0.2.0",
+      version: "0.2.1",
       elixir: "~> 1.2",
       deps: deps(),
       package: package(),
