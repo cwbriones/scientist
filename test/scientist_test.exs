@@ -1,7 +1,7 @@
 defmodule TestExperiment do
   use Scientist.Experiment
 
-  def default_context, do: %{parent: self}
+  def default_context(), do: %{parent: self()}
 
   def enabled?, do: true
 
@@ -66,7 +66,7 @@ defmodule ScientistTest do
       candidate(do: false)
 
       ignore do
-        send(self, :ignore_one)
+        send(self(), :ignore_one)
         false
       end
 
@@ -116,7 +116,7 @@ defmodule ScientistTest do
   end
 
   test "science uses the before_run block" do
-    parent = self
+    parent = self()
 
     science "my experiment" do
       control(do: 1)

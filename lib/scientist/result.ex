@@ -54,6 +54,6 @@ defmodule Scientist.Result do
   defp evaluate_candidates(ex, control, candidates) do
     candidates
     |> Enum.reject(&Experiment.observations_match?(ex, control, &1))
-    |> Enum.partition(&Experiment.should_ignore_mismatch?(ex, control, &1))
+    |> Enum.split_with(&Experiment.should_ignore_mismatch?(ex, control, &1))
   end
 end

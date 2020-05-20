@@ -15,7 +15,7 @@ defmodule Scientist.Experiment do
 
   ## Custom Defaults
 
-  `default_name/0` and `default_context/0` determine the default name and context,
+  `default_name()/0` and `default_context()/0` determine the default name and context,
   respectively, of unconfigured experiments in your module.
 
   ## Custom Exception Handling
@@ -68,14 +68,14 @@ defmodule Scientist.Experiment do
       @doc """
       Creates a new experiment.
       """
-      def new(name \\ default_name, opts \\ []) do
+      def new(name \\ default_name(), opts \\ []) do
         context = Keyword.get(opts, :context, %{})
         should_raise = Keyword.get(opts, :raise_on_mismatches, unquote(raise_on_mismatches))
 
         unquote(__MODULE__).new(
           name,
           module: __MODULE__,
-          context: Map.merge(default_context, context),
+          context: Map.merge(default_context(), context),
           raise_on_mismatches: should_raise
         )
       end
@@ -85,12 +85,12 @@ defmodule Scientist.Experiment do
 
       Any additional context passed to `new/2` will be merged with the default context.
       """
-      def default_context, do: %{}
+      def default_context(), do: %{}
 
       @doc """
       Returns the default name for an experiment.
       """
-      def default_name, do: "#{__MODULE__}"
+      def default_name(), do: "#{__MODULE__}"
 
       @doc """
       Called when an experiment run raises an error during an operation.
@@ -136,13 +136,13 @@ defmodule Scientist.Experiment do
     quote do
       try do
         unquote(block)
-      catch
-        except ->
-          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
-          nil
       rescue
         except ->
           unquote(exp).module.raised(unquote(exp), unquote(operation), except)
+          nil
+      catch
+        except ->
+          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
           nil
       end
     end
@@ -172,7 +172,7 @@ defmodule Scientist.Experiment do
         |> Enum.to_list()
 
       {[control], candidates} =
-        Enum.partition(observations, fn o ->
+        Enum.split_with(observations, fn o ->
           o.name == "control"
         end)
 

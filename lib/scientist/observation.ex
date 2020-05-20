@@ -8,7 +8,7 @@ defmodule Scientist.Observation do
   The timestamp is recorded as the system time, and along with the duration, is
   reported in milliseconds.
   """
-  @timeunit :milli_seconds
+  @timeunit :millisecond
 
   import Scientist.Experiment, only: [guarded: 3]
 
