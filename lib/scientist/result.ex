@@ -6,13 +6,11 @@ defmodule Scientist.Result do
   experiment, as well as information about whether observations were mismatched or
   ignored.
   """
-  defstruct [
-      experiment: nil,
-      candidates: [],
-      control: nil,
-      mismatched: [],
-      ignored: []
-    ]
+  defstruct experiment: nil,
+            candidates: [],
+            control: nil,
+            mismatched: [],
+            ignored: []
 
   alias __MODULE__
   alias Scientist.Experiment
@@ -55,7 +53,7 @@ defmodule Scientist.Result do
 
   defp evaluate_candidates(ex, control, candidates) do
     candidates
-      |> Enum.reject(&Experiment.observations_match?(ex, control, &1))
-      |> Enum.partition(&Experiment.should_ignore_mismatch?(ex, control, &1))
+    |> Enum.reject(&Experiment.observations_match?(ex, control, &1))
+    |> Enum.partition(&Experiment.should_ignore_mismatch?(ex, control, &1))
   end
 end

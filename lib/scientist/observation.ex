@@ -10,18 +10,16 @@ defmodule Scientist.Observation do
   """
   @timeunit :milli_seconds
 
-  import  Scientist.Experiment, only: [guarded: 3]
+  import Scientist.Experiment, only: [guarded: 3]
 
-  defstruct [
-      name: "",
-      experiment: nil,
-      timestamp: nil,
-      value: nil,
-      cleaned_value: nil,
-      exception: nil,
-      stacktrace: nil,
-      duration: nil,
-    ]
+  defstruct name: "",
+            experiment: nil,
+            timestamp: nil,
+            value: nil,
+            cleaned_value: nil,
+            exception: nil,
+            stacktrace: nil,
+            duration: nil
 
   @doc """
   Creates a new observation for `experiment`.
@@ -33,33 +31,27 @@ defmodule Scientist.Observation do
     observation = %Scientist.Observation{
       name: name,
       experiment: experiment,
-      timestamp: System.system_time(@timeunit),
+      timestamp: System.system_time(@timeunit)
     }
+
     try do
       value = candidate.()
-      cleaned = if experiment.clean do
-        guarded experiment, :clean, do: experiment.clean.(value)
-      else
-        value
-      end
+
+      cleaned =
+        if experiment.clean do
+          guarded(experiment, :clean, do: experiment.clean.(value))
+        else
+          value
+        end
+
       duration = System.system_time(@timeunit) - observation.timestamp
-      %__MODULE__{ observation |
-        value: value,
-        duration: duration,
-        cleaned_value: cleaned
-      }
+      %__MODULE__{observation | value: value, duration: duration, cleaned_value: cleaned}
     rescue
       except ->
-        %__MODULE__{ observation |
-          exception: {:raised, except},
-          stacktrace: System.stacktrace
-        }
+        %__MODULE__{observation | exception: {:raised, except}, stacktrace: System.stacktrace()}
     catch
       except ->
-        %__MODULE__{ observation |
-          exception: {:thrown, except},
-          stacktrace: System.stacktrace
-        }
+        %__MODULE__{observation | exception: {:thrown, except}, stacktrace: System.stacktrace()}
     end
   end
 
@@ -73,9 +65,15 @@ defmodule Scientist.Observation do
     case {observation.exception, other.exception} do
       {nil, nil} ->
         compare.(observation.value, other.value)
-      {nil, _} -> false;
-      {_, nil} -> false;
-      {except, other_except} -> except == other_except
+
+      {nil, _} ->
+        false
+
+      {_, nil} ->
+        false
+
+      {except, other_except} ->
+        except == other_except
     end
   end
 
@@ -84,8 +82,8 @@ defmodule Scientist.Observation do
   """
   def except!(observation)
   def except!(%Scientist.Observation{exception: nil}), do: nil
-  def except!(%Scientist.Observation{exception: {:raised, e}, stacktrace: s}), do: reraise e, s
-  def except!(%Scientist.Observation{exception: {:thrown, e}}), do: throw e
+  def except!(%Scientist.Observation{exception: {:raised, e}, stacktrace: s}), do: reraise(e, s)
+  def except!(%Scientist.Observation{exception: {:thrown, e}}), do: throw(e)
 
   @doc """
   Returns true if the observation threw or raised an exception.
