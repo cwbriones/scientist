@@ -27,7 +27,6 @@ defmodule Scientist.Mixfile do
   defp deps do
     [
       {:ex_doc, "~> 0.22.1", only: :dev, runtime: false},
-      {:earmark, "~> 1.4.4", only: :dev},
       {:excoveralls, "~> 0.12.3", only: :test}
     ]
   end
