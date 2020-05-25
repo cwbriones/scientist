@@ -5,6 +5,7 @@ defmodule Scientist do
 
   defmacro __using__(opts) do
     mod = Keyword.get(opts, :experiment, Scientist.Default)
+
     quote do
       import unquote(__MODULE__)
 
@@ -25,9 +26,11 @@ defmodule Scientist do
   defmacro science(name, opts \\ [], do: block) do
     should_run = Keyword.get(opts, :run, true)
     exp_opts = Keyword.delete(opts, :run)
+
     quote do
       var!(ex, Scientist) = @scientist_experiment.new(unquote(name), unquote(exp_opts))
       unquote(block)
+
       if unquote(should_run) do
         Scientist.Experiment.run(var!(ex, Scientist))
       else
@@ -44,8 +47,7 @@ defmodule Scientist do
   defmacro control(do: block) do
     quote do
       c = fn -> unquote(block) end
-      var!(ex, Scientist) =
-        Scientist.Experiment.add_control(var!(ex, Scientist), c)
+      var!(ex, Scientist) = Scientist.Experiment.add_control(var!(ex, Scientist), c)
     end
   end
 
@@ -57,6 +59,7 @@ defmodule Scientist do
   defmacro candidate(name \\ "candidate", do: block) do
     quote do
       c = fn -> unquote(block) end
+
       var!(ex, Scientist) =
         Scientist.Experiment.add_candidate(var!(ex, Scientist), unquote(name), c)
     end
@@ -83,7 +86,7 @@ defmodule Scientist do
   """
   defmacro ignore(x, y, do: block) do
     quote do
-      i = fn (unquote(x), unquote(y)) -> unquote(block) end
+      i = fn unquote(x), unquote(y) -> unquote(block) end
       var!(ex, Scientist) = Scientist.Experiment.ignore(var!(ex, Scientist), i)
     end
   end
@@ -97,7 +100,7 @@ defmodule Scientist do
   """
   defmacro compare(x, y, do: block) do
     quote do
-      c = fn (unquote(x), unquote(y)) -> unquote(block) end
+      c = fn unquote(x), unquote(y) -> unquote(block) end
       var!(ex, Scientist) = Scientist.Experiment.compare_with(var!(ex, Scientist), c)
     end
   end
@@ -111,7 +114,7 @@ defmodule Scientist do
   """
   defmacro clean(x, do: block) do
     quote do
-      c = fn (unquote(x)) -> unquote(block) end
+      c = fn unquote(x) -> unquote(block) end
       var!(ex, Scientist) = Scientist.Experiment.clean_with(var!(ex, Scientist), c)
     end
   end

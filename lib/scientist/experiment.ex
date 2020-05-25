@@ -15,7 +15,7 @@ defmodule Scientist.Experiment do
 
   ## Custom Defaults
 
-  `default_name/0` and `default_context/0` determine the default name and context,
+  `default_name()/0` and `default_context()/0` determine the default name and context,
   respectively, of unconfigured experiments in your module.
 
   ## Custom Exception Handling
@@ -34,19 +34,17 @@ defmodule Scientist.Experiment do
   * `:run_if`
   """
 
-  defstruct [
-      name: "#{__MODULE__}",
-      candidates: %{},
-      context: %{},
-      run_if_fn: nil,
-      before_run: nil,
-      result: nil,
-      clean: nil,
-      ignore: [],
-      comparator: &Kernel.==/2,
-      raise_on_mismatches: false,
-      module: Scientist.Default
-    ]
+  defstruct name: "#{__MODULE__}",
+            candidates: %{},
+            context: %{},
+            run_if_fn: nil,
+            before_run: nil,
+            result: nil,
+            clean: nil,
+            ignore: [],
+            comparator: &Kernel.==/2,
+            raise_on_mismatches: false,
+            module: Scientist.Default
 
   @doc """
   Returns `true` if the experiment should be run.
@@ -63,23 +61,23 @@ defmodule Scientist.Experiment do
 
   defmacro __using__(opts) do
     raise_on_mismatches = Keyword.get(opts, :raise_on_mismatches, false)
+
     quote do
       @behaviour unquote(__MODULE__)
 
       @doc """
       Creates a new experiment.
       """
-      def new(name \\ default_name, opts \\ []) do
+      def new(name \\ default_name(), opts \\ []) do
         context = Keyword.get(opts, :context, %{})
-        should_raise =
-          Keyword.get(opts, :raise_on_mismatches, unquote(raise_on_mismatches))
+        should_raise = Keyword.get(opts, :raise_on_mismatches, unquote(raise_on_mismatches))
 
         unquote(__MODULE__).new(
-            name,
-            module: __MODULE__,
-            context: Map.merge(default_context, context),
-            raise_on_mismatches: should_raise
-          )
+          name,
+          module: __MODULE__,
+          context: Map.merge(default_context(), context),
+          raise_on_mismatches: should_raise
+        )
       end
 
       @doc """
@@ -87,24 +85,24 @@ defmodule Scientist.Experiment do
 
       Any additional context passed to `new/2` will be merged with the default context.
       """
-      def default_context, do: %{}
+      def default_context(), do: %{}
 
       @doc """
       Returns the default name for an experiment.
       """
-      def default_name, do: "#{__MODULE__}"
+      def default_name(), do: "#{__MODULE__}"
 
       @doc """
       Called when an experiment run raises an error during an operation.
       """
-      def raised(experiment, operation, except), do: raise except
+      def raised(experiment, operation, except), do: raise(except)
 
       @doc """
       Called when an experiment run throws an error during an operation.
       """
-      def thrown(_experiment, _operation, except), do: throw except
+      def thrown(_experiment, _operation, except), do: throw(except)
 
-      defoverridable [ default_context: 0, default_name: 0, raised: 3, thrown: 3 ]
+      defoverridable default_context: 0, default_name: 0, raised: 3, thrown: 3
     end
   end
 
@@ -138,13 +136,13 @@ defmodule Scientist.Experiment do
     quote do
       try do
         unquote(block)
-      catch
-        except ->
-          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
-          nil
       rescue
         except ->
           unquote(exp).module.raised(unquote(exp), unquote(operation), except)
+          nil
+      catch
+        except ->
+          unquote(exp).module.thrown(unquote(exp), unquote(operation), except)
           nil
       end
     end
@@ -162,22 +160,25 @@ defmodule Scientist.Experiment do
   configured with `raise_on_mismatched: true`.
   """
   def run(exp, opts \\ [])
+
   def run(exp = %Scientist.Experiment{candidates: %{"control" => c}}, opts) do
     if should_run?(exp) do
       !exp.before_run or exp.before_run.()
 
-      observations = exp.candidates
-      |> Enum.shuffle
-      |> Enum.map(&(eval_candidate(exp, &1)))
-      |> Enum.to_list
+      observations =
+        exp.candidates
+        |> Enum.shuffle()
+        |> Enum.map(&eval_candidate(exp, &1))
+        |> Enum.to_list()
 
-      {[control], candidates} = Enum.partition(observations, fn o ->
-        o.name == "control"
-      end)
+      {[control], candidates} =
+        Enum.split_with(observations, fn o ->
+          o.name == "control"
+        end)
 
       result = Scientist.Result.new(exp, control, candidates)
 
-      guarded exp, :publish, do: exp.module.publish(result)
+      guarded(exp, :publish, do: exp.module.publish(result))
 
       if exp.raise_on_mismatches and Scientist.Result.mismatched?(result) do
         raise Scientist.MismatchError, result: result
@@ -192,7 +193,8 @@ defmodule Scientist.Experiment do
       c.()
     end
   end
-  def run(ex, _), do: raise Scientist.MissingControlError, experiment: ex
+
+  def run(ex, _), do: raise(Scientist.MissingControlError, experiment: ex)
 
   @doc """
   Returns true if a mismatch should be ignored.
@@ -203,9 +205,10 @@ defmodule Scientist.Experiment do
   Reports an `:ignore` error to the callback module if an exception is caught.
   """
   def should_ignore_mismatch?(exp, control, candidate) do
-    ignores = exp.ignore |> Enum.reverse
+    ignores = exp.ignore |> Enum.reverse()
+
     Enum.any?(ignores, fn i ->
-      guarded exp, :ignore, do: i.(control.value, candidate.value)
+      guarded(exp, :ignore, do: i.(control.value, candidate.value))
     end)
   end
 
@@ -246,7 +249,7 @@ defmodule Scientist.Experiment do
   Reports a `:run_if` error to the callback module if an exception is caught.
   """
   def run_if_allows?(experiment = %Scientist.Experiment{run_if_fn: f}) do
-    guarded experiment, :run_if, do: !f or f.()
+    guarded(experiment, :run_if, do: !f or f.())
   end
 
   @doc """
@@ -257,6 +260,7 @@ defmodule Scientist.Experiment do
   def add_control(exp = %Scientist.Experiment{candidates: %{"control" => _}}, _) do
     raise Scientist.DuplicateError, experiment: exp, name: "control"
   end
+
   def add_control(exp, fun), do: add_candidate(exp, "control", fun)
 
   @doc """
@@ -268,7 +272,7 @@ defmodule Scientist.Experiment do
     if Map.has_key?(exp.candidates, name) do
       raise Scientist.DuplicateError, experiment: exp, name: name
     else
-      update_in(exp.candidates, &(Map.put(&1, name, fun)))
+      update_in(exp.candidates, &Map.put(&1, name, fun))
     end
   end
 
