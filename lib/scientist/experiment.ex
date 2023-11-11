@@ -52,7 +52,7 @@ defmodule Scientist.Experiment do
   If a falsey value is returned, the candidate blocks of the experiment
   will be ignored, only running the control.
   """
-  @callback enabled?() :: Boolean | nil
+  @callback enabled?() :: boolean() | nil
 
   @doc """
   Publish the result of an experiment.
